@@ -13,6 +13,6 @@ RUN yum install -y  python3-libs unbound-libs perl pciutils libnl3 numactl\
     ${MLNX_OFED_RHEL7_LIBS}mlnx-dpdk-19.11.0-1.${MLNX_OFED_VERSION}.x86_64.rpm\
     ${MLNX_OFED_RHEL7_LIBS}openvswitch-2.12.1-1.${MLNX_OFED_VERSION}.x86_64.rpm
 
-ADD ./ovs_container_start.sh /
+ADD ./entrypoint.sh /
 
-ENTRYPOINT "/ovs_container_start.sh"  ${ARGS}
+ENTRYPOINT "/entrypoint.sh"  ${ARGS}
