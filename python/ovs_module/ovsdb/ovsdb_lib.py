@@ -3,7 +3,7 @@ from ovs_module.ovsdb import api as ovsdb_api
 
 class BaseOVS(object):
 
-    def __init__(self, connection='tcp:127.0.0.1:5678', timeout=120):
+    def __init__(self, connection='tcp:127.0.0.1:6001', timeout=120):
         self.timeout = timeout
         self.connection = connection
         self.ovsdb = ovsdb_api.get_instance(self)
@@ -16,27 +16,32 @@ class BaseOVS(object):
         return self.ovsdb.add_br(bridge, may_exist=True,
                                  datapath_type=datapath_type).execute()
 
-    def create_vdpa_port(self, bridge, dev, vdpa_socket_path, pf_pci,
-                         vf_pci, vf_num, tag=None):
+    def create_ovs_vif_port(self, bridge, dev, interface_type=None,
+                            pf_pci=None, vf_pci=None, vf_num=None,
+                            vdpa_socket_path=None, tag=None):
+
         """Create OVS port
         :param bridge: bridge name to create the port on.
         :param dev: port name.
-        :param vdpa_socket_path:path to socket file.
+        :param interface_type: OVS interface type.
         :param pf_pci: PCI address of PF for dpdk representor port.
         :param vf_pci: PCI address of VF for dpdk representor port.
         :param vf_num: VF number of PF for dpdk representor port.
+        :param vdpa_socket_path:path to socket file.
         :param tag: OVS interface tag.
         """
+
         col_values = []
-        col_values.append(('type', 'dpdkvdpa'))
-        col_values.append(('options',
-                           {'vdpa-socket-path': vdpa_socket_path}))
-        col_values.append(('options',
-                           {'vdpa-accelerator-devargs': vf_pci}))
-        devargs_string = "{PF_PCI},representor=[{VF_NUM}]".format(
-            PF_PCI=pf_pci, VF_NUM=vf_num)
-        col_values.append(('options',
-                           {'dpdk-devargs': devargs_string}))
+        if interface_type == "dpdkvdpa":
+            col_values.append(('type', 'dpdkvdpa'))
+            col_values.append(('options',
+                               {'vdpa-socket-path': vdpa_socket_path}))
+            col_values.append(('options',
+                               {'vdpa-accelerator-devargs': vf_pci}))
+            devargs_string = "{PF_PCI},representor=[{VF_NUM}]".format(
+                PF_PCI=pf_pci, VF_NUM=vf_num)
+            col_values.append(('options',
+                               {'dpdk-devargs': devargs_string}))
         with self.ovsdb.transaction() as txn:
             txn.add(self.ovsdb.add_port(bridge, dev))
             if tag:
