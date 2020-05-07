@@ -1,0 +1,125 @@
+diff --git a/vif_plug_ovs/constants.py b/vif_plug_ovs/constants.py
+index 1eece80..3d9794b 100644
+--- a/vif_plug_ovs/constants.py
++++ b/vif_plug_ovs/constants.py
+@@ -24,5 +24,9 @@ PLATFORM_WIN32 = 'win32'
+ 
+ OVS_DPDK_INTERFACE_TYPE = 'dpdk'
+ 
++OVS_VDPA_TYPE = 'dpdkvdpa'
++OVS_VDPA_PREFIX = 'vdp'
++
+ # Neutron dead VLAN.
+ DEAD_VLAN = 4095
++
+diff --git a/vif_plug_ovs/linux_net.py b/vif_plug_ovs/linux_net.py
+index 20baab3..c80053d 100644
+--- a/vif_plug_ovs/linux_net.py
++++ b/vif_plug_ovs/linux_net.py
+@@ -32,6 +32,7 @@ from oslo_utils import excutils
+ from vif_plug_ovs import constants
+ from vif_plug_ovs import exception
+ from vif_plug_ovs import privsep
++from ovs_module.containerovsdb import ovsdb_lib as containerovsdb_lib
+ 
+ LOG = logging.getLogger(__name__)
+ 
+@@ -62,6 +63,21 @@ def _update_device_mtu(dev, mtu):
+ 
+ 
+ @privsep.vif_plug.entrypoint
++def create_vdpa_port(vif_name, pf_pci, vf_pci, vf_num, vdpa_socket_path):
++    container_ovs = containerovsdb_lib.BaseOVS(connection='tcp:127.0.0.1:6000')
++    container_ovs.create_ovs_vif_port("br0-ovs", vif_name,
++                                      constants.OVS_VDPA_TYPE,
++                                      pf_pci, vf_pci, vf_num,
++                                      vdpa_socket_path)
++
++
++@privsep.vif_plug.entrypoint
++def delete_vdpa_port(vif_name):
++    container_ovs = containerovsdb_lib.BaseOVS(connection='tcp:127.0.0.1:6000')
++    container_ovs.delete_ovs_vif_port("br0-ovs", vif_name)
++
++
++@privsep.vif_plug.entrypoint
+ def delete_net_dev(dev):
+     """Delete a network device only if it exists."""
+     if ip_lib.exists(dev):
+diff --git a/vif_plug_ovs/ovs.py b/vif_plug_ovs/ovs.py
+index 9516f79..d8c5ef2 100644
+--- a/vif_plug_ovs/ovs.py
++++ b/vif_plug_ovs/ovs.py
+@@ -176,6 +176,30 @@ class OvsPlugin(plugin.PluginBase):
+             return datapath
+         return profile.datapath_type
+ 
++    @staticmethod
++    def _get_vif_datapath_offload(vif):
++        profile = vif.port_profile
++        if 'datapath_offload' in profile and profile.datapath_offload:
++            return profile.datapath_offload
++
++
++    def _plug_virtio_forwarder(self, vif, instance_info):
++        dp_rep = self._get_vif_datapath_offload(vif)
++        vif_name = OvsPlugin.gen_port_name(
++            constants.OVS_VDPA_PREFIX, vif.id)
++        pci_slot = dp_rep.representor_address
++        pf_pci = linux_net.get_pf_pci_from_vf(pci_slot)
++        vf_num = linux_net.get_vf_num_by_pci_address(pci_slot)
++        pf_ifname = linux_net.get_ifname_by_pci_address(
++            pci_slot, pf_interface=True, switchdev=True)
++        representor = linux_net.get_representor_port(pf_ifname, vf_num)
++
++        # create representor port
++        self._create_vif_port(vif, representor, instance_info)
++
++        # create vdpa port
++        linux_net.create_vdpa_port(vif_name, pf_pci, pci_slot, vf_num, vif.path)
++
+     def _plug_vhostuser(self, vif, instance_info):
+         self.ovsdb.ensure_ovs_bridge(
+             vif.network.bridge, self._get_vif_datapath_type(
+@@ -294,10 +318,29 @@ class OvsPlugin(plugin.PluginBase):
+             else:
+                 self._plug_vif_windows(vif, instance_info)
+         elif isinstance(vif, objects.vif.VIFVHostUser):
+-            self._plug_vhostuser(vif, instance_info)
++            if self._get_vif_datapath_offload(vif):
++                self._plug_virtio_forwarder(vif, instance_info)
++            else:
++                self._plug_vhostuser(vif, instance_info)
+         elif isinstance(vif, objects.vif.VIFHostDevice):
+             self._plug_vf(vif, instance_info)
+ 
++    def _unplug_virtio_forwarder(self, vif, instance_info):
++        vif_name = OvsPlugin.gen_port_name(constants.OVS_VDPA_PREFIX, vif.id)
++        dp_rep = self._get_vif_datapath_offload(vif)
++        pci_slot = dp_rep.representor_address
++        vf_num = linux_net.get_vf_num_by_pci_address(pci_slot)
++        pf_ifname = linux_net.get_ifname_by_pci_address(
++            pci_slot, pf_interface=True, switchdev=True)
++        representor = linux_net.get_representor_port(pf_ifname, vf_num)
++
++        # delete representor port
++        self.ovsdb.delete_ovs_vif_port(vif.network.bridge, representor,
++                                       delete_netdev=False)
++
++        # delete vdpa port
++        linux_net.delete_vdpa_port(vif_name)
++
+     def _unplug_vhostuser(self, vif, instance_info):
+         self.ovsdb.delete_ovs_vif_port(vif.network.bridge,
+             OvsPlugin.gen_port_name(
+@@ -369,6 +412,9 @@ class OvsPlugin(plugin.PluginBase):
+             else:
+                 self._unplug_vif_windows(vif, instance_info)
+         elif isinstance(vif, objects.vif.VIFVHostUser):
+-            self._unplug_vhostuser(vif, instance_info)
++            if self._get_vif_datapath_offload(vif):
++                self._unplug_virtio_forwarder(vif, instance_info)
++            else:
++                self._unplug_vhostuser(vif, instance_info)
+         elif isinstance(vif, objects.vif.VIFHostDevice):
+             self._unplug_vf(vif)
