@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Parse arguments.
-port=5678
+port=6000
 
 while test $# -gt 0; do
   case "$1" in
@@ -11,6 +11,12 @@ while test $# -gt 0; do
       vfs=$3
       dpdk_extra="-w ${pci},representor=[${vfs}],dv_flow_en=0,dv_esw_en=0,isolated_mode=1 ${dpdk_extra}"
       shift
+      shift
+      shift
+      ;;
+
+    --pmd-cpu-mask)
+      pmd_cpu_mask=$2
       shift
       shift
       ;;
@@ -28,7 +34,10 @@ options:
 	--pci_args)	<pci_address> <vfs_range>	A pci address of dpdk interface and range of vfs
 							e.g 0000:02:00.0 0-15
 							You can reuse this option for another devices
-	--port)		<port number>			OVS manager port default to 
+	--pmd-cpu-mask	<mask>				A core bitmask that sets which cores are used by
+							OVS-DPDK for datapath packet processing
+							e.g 0xc
+	--port)		<port number>			OVS manager port default to 6000
 
 	"
       exit 0
@@ -47,9 +56,20 @@ done
 # Set ovs manager.
 ovs-vsctl set-manager ptcp:"${port}"
 
-# Enable DPDK and add dpdk-extra args.
-ovs-vsctl set Open_vSwitch . other_config:dpdk-extra="${dpdk_extra}"
+# Enable DPDK
 ovs-vsctl set Open_vSwitch . other_config:dpdk-init=true
+
+# Add dpdk-extra args.
+if [[ -n "${dpdk_extra}" ]]
+then
+    ovs-vsctl set Open_vSwitch . other_config:dpdk-extra="${dpdk_extra}"
+fi
+
+# Add pmd-cpu-mask
+if [[ -n "${pmd_cpu_mask}" ]]
+then
+    ovs-vsctl set Open_vSwitch . other_config:pmd-cpu-mask="${pmd_cpu_mask}"
+fi
 
 # Sleep forever.
 sleep infinity
