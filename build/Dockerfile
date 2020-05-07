@@ -1,7 +1,7 @@
 FROM centos:centos7
 
-ARGS MLNX_OFED_RHEL_LIBS
-ARGS MLNX_OFED_VERSION
+ARG MLNX_OFED_RHEL_LIBS
+ARG MLNX_OFED_VERSION
 
 RUN yum install -y  python3-libs unbound-libs perl pciutils libnl3 numactl\
     python python-six iproute hostname compat-openssl10 unbound\

@@ -3,6 +3,7 @@
 
 # Create ovs container
 docker container create \
+    --privileged \
     --network host \
     --name ovs_forwarder_container \
     --restart unless-stopped \
