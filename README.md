@@ -40,6 +40,8 @@ Then start the contaier by running:
 ```
 $ docker start ovs-forwarder:$MLNX_OFED_VERSION
 ```
+Note: Make sure that you have vfs in switchdev mode and the vfs are binded before start the ovs-forwarder container  
+
 
 ## Use ovs_modules
 You can use the python/example.py script in order to use ovs modules  

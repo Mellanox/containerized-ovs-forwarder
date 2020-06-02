@@ -57,7 +57,7 @@ index 9516f79..d8c5ef2 100644
 +    @staticmethod
 +    def _get_vif_datapath_offload(vif):
 +        profile = vif.port_profile
-+        if 'datapath_offload' in profile and profile.datapath_offload:
++        if hasattr(profile, 'datapath_offload') and profile.datapath_offload:
 +            return profile.datapath_offload
 +
 +
