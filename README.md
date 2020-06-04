@@ -31,7 +31,8 @@ In case of bonding or you have more than one NIC for dpdk, reuse the --pci-args
 ```--pmd-cpu-mask <mask> A core bitmask that sets which cores are used by OVS-DPDK for datapath packet processing```  
 
 ```
-$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 0-3 --port 6000 
+$ mkdir -p /forwarder/var/run/openvswitch/
+$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 0-3 --port 6000
 ```
 Now the ovs-forwarder created successfully
 
