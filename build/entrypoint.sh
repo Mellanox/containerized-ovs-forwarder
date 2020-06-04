@@ -2,6 +2,7 @@
 
 # Parse arguments.
 port=6000
+OVS_RUNDIR=/var/run/openvswitch
 
 while test $# -gt 0; do
   case "$1" in
@@ -50,29 +51,35 @@ options:
   esac
 done
 
-# Start ovs.
-/usr/share/openvswitch/scripts/ovs-ctl start
+rm -f ${OVS_RUNDIR}/ovs-vswitchd.pid
+rm -f ${OVS_RUNDIR}/ovsdb-server.pid
 
-# Set ovs manager.
-ovs-vsctl set-manager ptcp:"${port}"
+# Start ovsdb.
+/usr/share/openvswitch/scripts/ovs-ctl start --no-ovs-vswitchd --system-id=random
 
 # Enable DPDK
-ovs-vsctl set Open_vSwitch . other_config:dpdk-init=true
+ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 
 # Add dpdk-extra args.
 if [[ -n "${dpdk_extra}" ]]
 then
-    ovs-vsctl set Open_vSwitch . other_config:dpdk-extra="${dpdk_extra}"
+    ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="${dpdk_extra}"
 fi
 
 # Add pmd-cpu-mask
 if [[ -n "${pmd_cpu_mask}" ]]
 then
-    ovs-vsctl set Open_vSwitch . other_config:pmd-cpu-mask="${pmd_cpu_mask}"
+    ovs-vsctl --no-wait set Open_vSwitch . other_config:pmd-cpu-mask="${pmd_cpu_mask}"
 fi
 
+# Start ovs-vswitchd
+/usr/share/openvswitch/scripts/ovs-ctl start --no-ovsdb-server --system-id=random
+
+# Set ovs manager.
+ovs-vsctl set-manager ptcp:"${port}"
+
 # Create br0-ovs bridge
-ovs-vsctl add-br br0-ovs -- set bridge br0-ovs datapath_type=netdev
+ovs-vsctl --may-exist add-br br0-ovs -- set bridge br0-ovs datapath_type=netdev
 
 # Sleep forever.
 sleep infinity
