@@ -2,7 +2,7 @@ diff --git a/nova/network/os_vif_util.py b/nova/network/os_vif_util.py
 index 9b76ef3..c1e3806 100644
 --- a/nova/network/os_vif_util.py
 +++ b/nova/network/os_vif_util.py
-@@ -353,6 +353,21 @@ def _nova_to_osvif_vif_ovs(vif):
+@@ -338,6 +338,21 @@ def _nova_to_osvif_vif_ovs(vif):
              port_profile=_get_ovs_representor_port_profile(vif),
              plugin="ovs")
          _set_representor_datapath_offload_settings(vif, obj)
@@ -21,7 +21,7 @@ index 9b76ef3..c1e3806 100644
 +        if vif["network"]["bridge"] is not None:
 +            obj.network.bridge = vif["network"]["bridge"]
 +
-     elif _is_firewall_required(vif) or vif.is_hybrid_plug_enabled():
+     elif vif.is_hybrid_plug_enabled():
          obj = _get_vif_instance(
              vif,
 

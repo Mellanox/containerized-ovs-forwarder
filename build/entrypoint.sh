@@ -54,6 +54,13 @@ done
 rm -f ${OVS_RUNDIR}/ovs-vswitchd.pid
 rm -f ${OVS_RUNDIR}/ovsdb-server.pid
 
+#Stop ovs when stop the container
+function quit() {
+    /usr/share/openvswitch/scripts/ovs-ctl stop
+    exit 1
+}
+trap quit SIGTERM
+
 # Start ovsdb.
 /usr/share/openvswitch/scripts/ovs-ctl start --no-ovs-vswitchd --system-id=random
 
@@ -81,5 +88,8 @@ ovs-vsctl set-manager ptcp:"${port}"
 # Create br0-ovs bridge
 ovs-vsctl --may-exist add-br br0-ovs -- set bridge br0-ovs datapath_type=netdev
 
-# Sleep forever.
-sleep infinity
+# Run forever.
+while true
+do
+  tail -f /dev/null & wait ${!}
+done
