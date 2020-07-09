@@ -42,7 +42,17 @@ Then start the contaier by running:
 $ docker start ovs-forwarder:$MLNX_OFED_VERSION
 ```
 Note: Make sure that you have vfs in switchdev mode and the vfs are binded before start the ovs-forwarder container  
-
+      In case of vf-lag (bonding with switchdev) the steps should be as following:  
+      - Create vfs on both mlnx ports  
+      - unbind vfs for both mlnx ports  
+      - move mlnx ports to switchdev mode  
+      - plug mlnx ports to bond interface  
+      - bind vfs for both mlnx ports  
+      - start OVS container  
+Note: Make sure also that you have UCTX_EN enabled in FW configuration  
+      mlxconfig -d mlx5_0 q UCTX_EN  
+      if it's disabled run this command and reboot the server  
+      mlxconfig -d mlx5_0 s UCTX_EN=1  
 
 ## Use ovs_modules
 You can use the python/example.py script in order to use ovs modules  
