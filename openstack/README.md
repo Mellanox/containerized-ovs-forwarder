@@ -1,16 +1,29 @@
 # Openstack ovs-kernel with OVN
 
+## Description
+
+This repo has serveral patches that should be applied to the following openstack compenents to support virtio forwarder in OVN deployments:  
+- Neutron  
+    Adding the required changes in controller nodes (neutron_api service/container) to support creating virtio forwarder ports  
+- Nova  
+    Adding the required changes in Compute nodes (nova_compute service/container) to convert the nova.network.model to proper os_vif object  
+- Os-vif  
+    Adding the required changes in Compute nodes (nova_compute service/container) to plug in the representor port to ovs and vdpa port to containerized ovs  
+
+
 ## Apply patches
 
-After preparing the setup and creating the ovs-forwarder container, apply the following patches:  
+After preparing the setup and creating the ovs-forwarder container, apply the following patches for the relevant OpenStack release:  
 Note: if the setup is containerized, please make sure to apply patches inside the related container
 
 - networking-ovn.patch should be applied to  
     /usr/lib/python3.6/site-packages/neutron/plugins/ml2/drivers/ovn/mech_driver/mech_driver.py
+    Note in train release it will applied to /usr/lib/python3.6/site-packages/neutron/networking_ovn/ml2/mech_driver.py
     ```
     $ cd /usr/lib/python3.6/site-packages/neutron
     $ patch -p1 < networking-ovn.patch
     ```
+    Note in train release it will applied to /usr/lib/python3.6/site-packages/neutron/networking_ovn/ml2/mech_driver.py
     
 - nova_os_vif_util.patch should be applied to  
     /usr/lib/python3.6/site-packages/nova/network/os_vif_util.py
