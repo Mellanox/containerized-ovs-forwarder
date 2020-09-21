@@ -84,3 +84,8 @@ Before using the ovs modules make sure that the requirements in requirements.txt
 $ cd python
 $ python example.py
 ```
+
+## Supported Hardware
+Containerized OVS Forwarder has been validated to work with the following Mellanox hardware:
+- ConnectX-5 family adapters
+- ConnectX-6Dx family adapters
