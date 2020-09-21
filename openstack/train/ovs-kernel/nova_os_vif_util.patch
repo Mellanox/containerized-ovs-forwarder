@@ -1,0 +1,27 @@
+diff --git a/nova/network/os_vif_util.py b/nova/network/os_vif_util.py
+index 9b76ef3..c1e3806 100644
+--- a/nova/network/os_vif_util.py
++++ b/nova/network/os_vif_util.py
+@@ -338,6 +338,21 @@ def _nova_to_osvif_vif_ovs(vif):
+             port_profile=_get_ovs_representor_port_profile(vif),
+             plugin="ovs")
+         _set_representor_datapath_offload_settings(vif, obj)
++
++    # Add support for virtio_forwrder port
++    elif vnic_type == model.VNIC_TYPE_VIRTIO_FORWARDER:
++        obj = _get_vif_instance(
++            vif,
++            objects.vif.VIFVHostUser,
++            port_profile=_get_ovs_representor_port_profile(vif),
++            plugin="ovs",
++            vif_name=vif_name)
++        _set_representor_datapath_offload_settings(vif, obj)
++        obj.mode="server"
++        obj.path=("/var/lib/vhost_sockets/sock%s" % vif['id'])[:39]
++        if vif["network"]["bridge"] is not None:
++            obj.network.bridge = vif["network"]["bridge"]
++
+     elif _is_firewall_required(vif) or vif.is_hybrid_plug_enabled():
+         obj = _get_vif_instance(
+             vif,
+

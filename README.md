@@ -49,19 +49,21 @@ if it's disabled run this command and reboot the server
 ## Enable switchdev mode
   Before starting ovs container, make sure to have vfs in switchdev mode and the vfs are binded
 - None vf-lag case
-  - Create vfs on both mlnx ports  
+  - Create vfs on mlnx port  
     ```$ echo 4 > /sys/class/net/p4p1/device/sriov_numvfs```  
-  - Unbind vfs for both mlnx ports  
+  - Unbind vfs for mlnx port  
     ```$ for i in `lspci -D | grep nox | grep Virt| awk '{print $1}'`; do echo  $i > /sys/bus/pci/drivers/mlx5_core/unbind; done```  
-  - Move mlnx ports to switchdev mode  
+  - Move mlnx port to switchdev mode  
     ```$ /usr/sbin/devlink dev eswitch set pci/0000:03:00.0 mode switchdev```  
-  - Bind vfs for both mlnx ports  
+  - Bind vfs for mlnx port  
     ```$ for i in `lspci -D | grep nox | grep Virt| awk '{print $1}'`; do echo  $i > /sys/bus/pci/drivers/mlx5_core/bind; done```  
 
 - Vf-lag case
   - Create vfs on both mlnx ports   
     ``` echo 4 > /sys/class/net/p4p1/device/sriov_numvfs```  
     ``` echo 4 > /sys/class/net/p4p2/device/sriov_numvfs```  
+  - Unbind vfs for both mlnx ports  
+    ```$ for i in `lspci -D | grep nox | grep Virt| awk '{print $1}'`; do echo  $i > /sys/bus/pci/drivers/mlx5_core/unbind; done```  
   - Move mlnx ports to switchdev mode  
     ```/usr/sbin/devlink dev eswitch set pci/0000:03:00.0 mode switchdev```  
     ```/usr/sbin/devlink dev eswitch set pci/0000:03:00.1 mode switchdev```  
