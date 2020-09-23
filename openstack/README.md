@@ -49,6 +49,13 @@ group = "hugetlbfs"
 
 After that restart the nova, lbvirt  and neutron services/contianers
 
+
+## Creating ovs forwarder container service
+The ovs_forwarder_container_service_create.sh creates ovs forwarder container service which starts the ovs forwarder container after the reboot  
+```  
+$ /bin/bash ovs_forwarder_container_service_create.sh
+```  
+
 ## Creating an instance:
 
 ### Create network
