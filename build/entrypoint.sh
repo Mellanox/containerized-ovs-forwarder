@@ -10,7 +10,7 @@ while test $# -gt 0; do
     --pci-args)
       pci=$2
       vfs=$3
-      dpdk_extra="-w ${pci},representor=[${vfs}],dv_flow_en=0,dv_esw_en=0,isolated_mode=1 ${dpdk_extra}"
+      dpdk_extra="-w ${pci},representor=[${vfs}],dv_flow_en=1,dv_esw_en=0,isolated_mode=1 ${dpdk_extra}"
       shift
       shift
       shift
