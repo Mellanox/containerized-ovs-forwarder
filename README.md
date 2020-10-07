@@ -36,6 +36,23 @@ $ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 
 ```
 Now the ovs-forwarder created successfully
 
+## Prerequisites  
+Make sure you have installed all of the following prerequisites on the host machine:  
+  - With connection tracking:  
+    - openvswitch-2.13 and above  
+    - MLNX_OFED_LINUX-5.1-2.3.7.1 and above  
+    - kernel-5.7 and above with connection tracking modules  
+
+  - Without connection tracking:  
+    - Openvswitch, openvswitch-2.12 and above  
+    - MLNX_OFED_LINUX-5.1-2.3.7.1 and above  
+
+## Supported Hardware
+Containerized OVS Forwarder has been validated to work with the following Mellanox hardware:
+- ConnectX-5 family adapters => min FW is 16.28.2006
+- ConnectX-6Dx family adapters => min FW is 22.28.2006
+
+
 ## Enable UCTX
 Make sure that you have UCTX_EN enabled in FW configuration  
   ```
@@ -87,7 +104,3 @@ $ cd python
 $ python example.py
 ```
 
-## Supported Hardware
-Containerized OVS Forwarder has been validated to work with the following Mellanox hardware:
-- ConnectX-5 family adapters
-- ConnectX-6Dx family adapters
