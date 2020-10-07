@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Parse arguments
-MLNX_OFED_RHEL_LIBS="https://linux.mellanox.com/public/repo/mlnx_ofed/latest/rhel7.7/x86_64/UPSTREAM_LIBS/"
+MLNX_OFED_RHEL_LIBS="https://linux.mellanox.com/public/repo/mlnx_ofed/latest/rhel7.7/x86_64/"
 if [[ -z $MLNX_OFED_VERSION ]]
 then
-    MLNX_OFED_VERSION=50218
+    MLNX_OFED_VERSION=51237
 fi
 
 # Create ovs container
