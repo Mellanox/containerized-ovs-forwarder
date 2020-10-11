@@ -47,7 +47,15 @@ Note: if the setup is containerized, please make sure to apply patches inside th
 Edit /etc/libvirt/qemu.conf config with adding
 group = "hugetlbfs"
 
-After that restart the nova, lbvirt  and neutron services/contianers
+After that restart the nova, lbvirt  and neutron services/contianers  
+
+## Configure vhostuser socket directory  
+
+```  
+$ mkdir -p /var/lib/vhost_sockets/  
+$ chmod 775 /var/lib/vhost_sockets/  
+$ chown qemu:hugetlbfs /var/lib/vhost_sockets/  
+```  
 
 ## Creating an instance:
 
