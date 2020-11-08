@@ -57,6 +57,13 @@ $ chmod 775 /var/lib/vhost_sockets/
 $ chown qemu:hugetlbfs /var/lib/vhost_sockets/  
 ```  
 
+
+## Creating ovs forwarder container service
+The ovs_forwarder_container_service_create.sh creates ovs forwarder container service which starts the ovs forwarder container after the reboot  
+```  
+$ /bin/bash ovs_forwarder_container_service_create.sh
+```  
+
 ## Creating an instance:
 
 ### Create network
