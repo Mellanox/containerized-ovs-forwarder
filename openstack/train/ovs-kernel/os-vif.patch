@@ -1,8 +1,8 @@
 diff --git a/vif_plug_ovs/constants.py b/vif_plug_ovs/constants.py
 index 1eece80..3d9794b 100644
---- a/vif_plug_ovs/constants.py	
-+++ b/vif_plug_ovs/constants.py	
-@@ -24,5 +24,9 @@ PLATFORM_WIN32 = 'win32'	
+--- a/vif_plug_ovs/constants.py
++++ b/vif_plug_ovs/constants.py
+@@ -24,5 +24,9 @@ PLATFORM_WIN32 = 'win32'
 
  OVS_DPDK_INTERFACE_TYPE = 'dpdk'
 
