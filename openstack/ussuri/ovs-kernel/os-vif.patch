@@ -1,11 +1,11 @@
 diff --git a/vif_plug_ovs/constants.py b/vif_plug_ovs/constants.py
 index 1eece80..3d9794b 100644
---- a/vif_plug_ovs/constants.py
-+++ b/vif_plug_ovs/constants.py
-@@ -24,5 +24,9 @@ PLATFORM_WIN32 = 'win32'
- 
+--- a/vif_plug_ovs/constants.py	
++++ b/vif_plug_ovs/constants.py	
+@@ -24,5 +24,9 @@ PLATFORM_WIN32 = 'win32'	
+
  OVS_DPDK_INTERFACE_TYPE = 'dpdk'
- 
+
 +OVS_VDPA_TYPE = 'dpdkvdpa'
 +OVS_VDPA_PREFIX = 'vdp'
 +
@@ -13,7 +13,7 @@ index 1eece80..3d9794b 100644
  DEAD_VLAN = 4095
 +
 diff --git a/vif_plug_ovs/linux_net.py b/vif_plug_ovs/linux_net.py
-index 20baab3..c80053d 100644
+index 20baab3..900bfc1 100644
 --- a/vif_plug_ovs/linux_net.py
 +++ b/vif_plug_ovs/linux_net.py
 @@ -32,6 +32,7 @@ from oslo_utils import excutils
@@ -21,19 +21,20 @@ index 20baab3..c80053d 100644
  from vif_plug_ovs import exception
  from vif_plug_ovs import privsep
 +from ovs_module.containerovsdb import ovsdb_lib as containerovsdb_lib
- 
+
  LOG = logging.getLogger(__name__)
- 
-@@ -62,6 +63,21 @@ def _update_device_mtu(dev, mtu):
- 
- 
+
+@@ -62,6 +63,22 @@ def _update_device_mtu(dev, mtu):
+
+
  @privsep.vif_plug.entrypoint
-+def create_vdpa_port(vif_name, pf_pci, vf_pci, vf_num, vdpa_socket_path):
++def create_vdpa_port(vif_name, pf_pci, vf_pci, vf_num, vdpa_socket_path, mtu):
 +    container_ovs = containerovsdb_lib.BaseOVS(connection='tcp:127.0.0.1:6000')
 +    container_ovs.create_ovs_vif_port("br0-ovs", vif_name,
 +                                      constants.OVS_VDPA_TYPE,
 +                                      pf_pci, vf_pci, vf_num,
-+                                      vdpa_socket_path)
++                                      vdpa_socket_path,
++                                      mtu=mtu)
 +
 +
 +@privsep.vif_plug.entrypoint
@@ -47,13 +48,13 @@ index 20baab3..c80053d 100644
      """Delete a network device only if it exists."""
      if ip_lib.exists(dev):
 diff --git a/vif_plug_ovs/ovs.py b/vif_plug_ovs/ovs.py
-index 9516f79..d8c5ef2 100644
+index 9516f79..d62b7ba 100644
 --- a/vif_plug_ovs/ovs.py
 +++ b/vif_plug_ovs/ovs.py
-@@ -176,6 +176,30 @@ class OvsPlugin(plugin.PluginBase):
+@@ -176,6 +176,31 @@ class OvsPlugin(plugin.PluginBase):
              return datapath
          return profile.datapath_type
- 
+
 +    @staticmethod
 +    def _get_vif_datapath_offload(vif):
 +        profile = vif.port_profile
@@ -71,17 +72,18 @@ index 9516f79..d8c5ef2 100644
 +        pf_ifname = linux_net.get_ifname_by_pci_address(
 +            pci_slot, pf_interface=True, switchdev=True)
 +        representor = linux_net.get_representor_port(pf_ifname, vf_num)
++        mtu = self._get_mtu(vif)
 +
 +        # create representor port
 +        self._create_vif_port(vif, representor, instance_info)
 +
 +        # create vdpa port
-+        linux_net.create_vdpa_port(vif_name, pf_pci, pci_slot, vf_num, vif.path)
++        linux_net.create_vdpa_port(vif_name, pf_pci, pci_slot, vf_num, vif.path, mtu)
 +
      def _plug_vhostuser(self, vif, instance_info):
          self.ovsdb.ensure_ovs_bridge(
              vif.network.bridge, self._get_vif_datapath_type(
-@@ -294,10 +318,29 @@ class OvsPlugin(plugin.PluginBase):
+@@ -294,10 +319,29 @@ class OvsPlugin(plugin.PluginBase):
              else:
                  self._plug_vif_windows(vif, instance_info)
          elif isinstance(vif, objects.vif.VIFVHostUser):
@@ -92,7 +94,7 @@ index 9516f79..d8c5ef2 100644
 +                self._plug_vhostuser(vif, instance_info)
          elif isinstance(vif, objects.vif.VIFHostDevice):
              self._plug_vf(vif, instance_info)
- 
+
 +    def _unplug_virtio_forwarder(self, vif, instance_info):
 +        vif_name = OvsPlugin.gen_port_name(constants.OVS_VDPA_PREFIX, vif.id)
 +        dp_rep = self._get_vif_datapath_offload(vif)
@@ -112,7 +114,7 @@ index 9516f79..d8c5ef2 100644
      def _unplug_vhostuser(self, vif, instance_info):
          self.ovsdb.delete_ovs_vif_port(vif.network.bridge,
              OvsPlugin.gen_port_name(
-@@ -369,6 +412,9 @@ class OvsPlugin(plugin.PluginBase):
+@@ -369,6 +413,9 @@ class OvsPlugin(plugin.PluginBase):
              else:
                  self._unplug_vif_windows(vif, instance_info)
          elif isinstance(vif, objects.vif.VIFVHostUser):

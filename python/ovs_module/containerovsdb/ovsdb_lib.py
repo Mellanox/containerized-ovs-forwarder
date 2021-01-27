@@ -16,9 +16,12 @@ class BaseOVS(object):
         return self.ovsdb.add_br(bridge, may_exist=True,
                                  datapath_type=datapath_type).execute()
 
+    def _set_mtu_request(self, dev, mtu):
+        self.ovsdb.db_set('Interface', dev, ('mtu_request', mtu)).execute()
+
     def create_ovs_vif_port(self, bridge, dev, interface_type=None,
                             pf_pci=None, vf_pci=None, vf_num=None,
-                            vdpa_socket_path=None, tag=None):
+                            vdpa_socket_path=None, tag=None, mtu=None):
 
         """Create OVS port
         :param bridge: bridge name to create the port on.
@@ -47,6 +50,8 @@ class BaseOVS(object):
             if tag:
                 txn.add(self.ovsdb.db_set('Port', dev, ('tag', tag)))
             txn.add(self.ovsdb.db_set('Interface', dev, *col_values))
+        if mtu:
+            self._set_mtu_request(dev, mtu)
 
     def delete_ovs_vif_port(self, bridge, dev, delete_netdev=True):
         self.ovsdb.del_port(dev, bridge=bridge, if_exists=True).execute()
