@@ -17,7 +17,7 @@ class BaseOVS(object):
                                  datapath_type=datapath_type).execute()
 
     def create_ovs_vif_port(self, bridge, dev, interface_type=None,
-                            pf_pci=None, vf_pci=None, vf_num=None,
+                            pf_pci=None, vf_pci=None, phys_port_name=None,
                             vdpa_socket_path=None, tag=None):
 
         """Create OVS port
@@ -26,7 +26,7 @@ class BaseOVS(object):
         :param interface_type: OVS interface type.
         :param pf_pci: PCI address of PF for dpdk representor port.
         :param vf_pci: PCI address of VF for dpdk representor port.
-        :param vf_num: VF number of PF for dpdk representor port.
+        :param phys_port_name: Physical port name for dpdk representor port.
         :param vdpa_socket_path:path to socket file.
         :param tag: OVS interface tag.
         """
@@ -38,8 +38,8 @@ class BaseOVS(object):
                                {'vdpa-socket-path': vdpa_socket_path}))
             col_values.append(('options',
                                {'vdpa-accelerator-devargs': vf_pci}))
-            devargs_string = "{PF_PCI},representor=[{VF_NUM}]".format(
-                PF_PCI=pf_pci, VF_NUM=vf_num)
+            devargs_string = "{PF_PCI},representor={PHYS_PORT_NAME}".format(
+                PF_PCI=pf_pci, PHYS_PORT_NAME=phys_port_name)
             col_values.append(('options',
                                {'dpdk-devargs': devargs_string}))
         with self.ovsdb.transaction() as txn:

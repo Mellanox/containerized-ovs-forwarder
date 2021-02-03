@@ -24,15 +24,21 @@ Pass the required arguements to container_create,
 
 ```--port <port_number> OVS manager port default to 6000```
 
-```--pci-args <pci_address> <vfs_range> A pci address of dpdk interface and range of vfs```
+```--pci-args <pci_address> <vfs_range> A pci address of dpdk interface and range of vfs in format pf0vf[range]```
 
-In case of bonding or you have more than one NIC for dpdk, reuse the --pci-args
+In case of bonding, reuse the --pci-args for the second pf, but make sure to use the pci address of the pf0 and vfs range in format pf1vf[range]  
+**Note**: We can't use this new syntax on non vf-lag case with pf1 as a dpdk interface 
 
 ```--pmd-cpu-mask <mask> A core bitmask that sets which cores are used by OVS-DPDK for datapath packet processing```  
 
 ```
-$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 0-3 --port 6000
+$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --port 6000
+```  
+In case of bonding it should be like this  
 ```
+$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --pci-args 0000:02:00.0 pf1vf[0-3] --port 6000
+```  
+
 Now the ovs-forwarder created successfully
 
 ## Prerequisites  
