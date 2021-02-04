@@ -13,7 +13,7 @@ index 1eece80..3d9794b 100644
  DEAD_VLAN = 4095
 +
 diff --git a/vif_plug_ovs/linux_net.py b/vif_plug_ovs/linux_net.py
-index 20baab3..c80053d 100644
+index 20baab3..dc242c8 100644
 --- a/vif_plug_ovs/linux_net.py
 +++ b/vif_plug_ovs/linux_net.py
 @@ -32,6 +32,7 @@ from oslo_utils import excutils
@@ -46,11 +46,26 @@ index 20baab3..c80053d 100644
  def delete_net_dev(dev):
      """Delete a network device only if it exists."""
      if ip_lib.exists(dev):
+@@ -389,3 +405,14 @@ def get_pf_pci_from_vf(vf_pci):
+     """
+     physfn_path = os.readlink("/sys/bus/pci/devices/%s/physfn" % vf_pci)
+     return os.path.basename(physfn_path)
++
++
++def get_phys_port_name(representor):
++    """Get physical port name for the represntor
++
++    :param: representor: the representor name
++    """
++    phys_port_name_file = "/sys/class/net/%s/phys_port_name" % representor
++    with open(phys_port_name_file, 'r') as f:
++        phys_port_name = f.readline().strip()
++    return phys_port_name
 diff --git a/vif_plug_ovs/ovs.py b/vif_plug_ovs/ovs.py
-index 9516f79..d8c5ef2 100644
+index 9516f79..f7f9013 100644
 --- a/vif_plug_ovs/ovs.py
 +++ b/vif_plug_ovs/ovs.py
-@@ -176,6 +176,30 @@ class OvsPlugin(plugin.PluginBase):
+@@ -176,6 +176,33 @@ class OvsPlugin(plugin.PluginBase):
              return datapath
          return profile.datapath_type
  
@@ -67,21 +82,24 @@ index 9516f79..d8c5ef2 100644
 +            constants.OVS_VDPA_PREFIX, vif.id)
 +        pci_slot = dp_rep.representor_address
 +        pf_pci = linux_net.get_pf_pci_from_vf(pci_slot)
++        pf0_pci = pf_pci[:-1] + "0"
 +        vf_num = linux_net.get_vf_num_by_pci_address(pci_slot)
 +        pf_ifname = linux_net.get_ifname_by_pci_address(
 +            pci_slot, pf_interface=True, switchdev=True)
 +        representor = linux_net.get_representor_port(pf_ifname, vf_num)
++        phys_port_name = linux_net.get_phys_port_name(representor)
 +
 +        # create representor port
 +        self._create_vif_port(vif, representor, instance_info)
 +
 +        # create vdpa port
-+        linux_net.create_vdpa_port(vif_name, pf_pci, pci_slot, vf_num, vif.path)
++        linux_net.create_vdpa_port(vif_name, pf0_pci, pci_slot, phys_port_name,
++                                   vif.path)
 +
      def _plug_vhostuser(self, vif, instance_info):
          self.ovsdb.ensure_ovs_bridge(
              vif.network.bridge, self._get_vif_datapath_type(
-@@ -294,10 +318,29 @@ class OvsPlugin(plugin.PluginBase):
+@@ -294,10 +321,27 @@ class OvsPlugin(plugin.PluginBase):
              else:
                  self._plug_vif_windows(vif, instance_info)
          elif isinstance(vif, objects.vif.VIFVHostUser):
@@ -97,8 +115,6 @@ index 9516f79..d8c5ef2 100644
 +        vif_name = OvsPlugin.gen_port_name(constants.OVS_VDPA_PREFIX, vif.id)
 +        dp_rep = self._get_vif_datapath_offload(vif)
 +        pci_slot = dp_rep.representor_address
-+        vf_num = linux_net.get_vf_num_by_pci_address(pci_slot)
-+        pf_ifname = linux_net.get_ifname_by_pci_address(
 +            pci_slot, pf_interface=True, switchdev=True)
 +        representor = linux_net.get_representor_port(pf_ifname, vf_num)
 +
@@ -112,7 +128,7 @@ index 9516f79..d8c5ef2 100644
      def _unplug_vhostuser(self, vif, instance_info):
          self.ovsdb.delete_ovs_vif_port(vif.network.bridge,
              OvsPlugin.gen_port_name(
-@@ -369,6 +412,9 @@ class OvsPlugin(plugin.PluginBase):
+@@ -369,6 +413,9 @@ class OvsPlugin(plugin.PluginBase):
              else:
                  self._unplug_vif_windows(vif, instance_info)
          elif isinstance(vif, objects.vif.VIFVHostUser):

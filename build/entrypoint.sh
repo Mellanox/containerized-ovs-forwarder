@@ -9,8 +9,8 @@ while test $# -gt 0; do
 
     --pci-args)
       pci=$2
-      vfs=$3
-      dpdk_extra="-w ${pci},representor=[${vfs}],dv_flow_en=1,dv_esw_en=0,isolated_mode=1 ${dpdk_extra}"
+      vfs_range=$3
+      dpdk_extra="-a ${pci},representor=${vfs_range},dv_flow_en=1,dv_esw_en=0,isolated_mode=1 ${dpdk_extra}"
       shift
       shift
       shift
@@ -33,7 +33,10 @@ while test $# -gt 0; do
 ovs_container_start.sh [options]: Starting script for ovs container which will configure and start ovs
 options:
 	--pci-args)	<pci_address> <vfs_range>	A pci address of dpdk interface and range of vfs
-							e.g 0000:02:00.0 0-15
+							e.g 0000:02:00.0 pf0vf[0-15].
+							In case of vf-lag make sure to provide the PCI
+                                                        of the first pf always for the second port
+							e.g 0000:02:00.0 pf1vf[0-15].
 							You can reuse this option for another devices
 	--pmd-cpu-mask	<core_bitmask>			A core bitmask that sets which cores are used by
 							OVS-DPDK for datapath packet processing
