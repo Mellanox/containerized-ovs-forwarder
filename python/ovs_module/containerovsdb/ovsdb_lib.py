@@ -16,9 +16,21 @@ class BaseOVS(object):
         return self.ovsdb.add_br(bridge, may_exist=True,
                                  datapath_type=datapath_type).execute()
 
+    def _ovs_supports_mtu_requests(self):
+        return self.ovsdb.has_table_column('Interface', 'mtu_request')
+
+    def _set_mtu_request(self, dev, mtu):
+        self.ovsdb.db_set('Interface', dev, ('mtu_request', mtu)).execute()
+
+    def update_device_mtu(self, dev, mtu):
+        if not mtu:
+            return
+        elif self._ovs_supports_mtu_requests():
+            self._set_mtu_request(dev, mtu)
+
     def create_ovs_vif_port(self, bridge, dev, interface_type=None,
                             pf_pci=None, vf_pci=None, phys_port_name=None,
-                            vdpa_socket_path=None, tag=None):
+                            vdpa_socket_path=None, tag=None, mtu=None):
 
         """Create OVS port
         :param bridge: bridge name to create the port on.
@@ -29,6 +41,7 @@ class BaseOVS(object):
         :param phys_port_name: Physical port name for dpdk representor port.
         :param vdpa_socket_path:path to socket file.
         :param tag: OVS interface tag.
+        :param mtu: port mtu
         """
 
         col_values = []
@@ -47,6 +60,7 @@ class BaseOVS(object):
             if tag:
                 txn.add(self.ovsdb.db_set('Port', dev, ('tag', tag)))
             txn.add(self.ovsdb.db_set('Interface', dev, *col_values))
+        self.update_device_mtu(dev, mtu)
 
     def delete_ovs_vif_port(self, bridge, dev, delete_netdev=True):
         self.ovsdb.del_port(dev, bridge=bridge, if_exists=True).execute()
