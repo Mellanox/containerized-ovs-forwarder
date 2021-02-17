@@ -1,5 +1,5 @@
 diff --git a/nova/network/os_vif_util.py b/nova/network/os_vif_util.py
-index 9b76ef3..c1e3806 100644
+index 0bfd87b..ee6578d 100644
 --- a/nova/network/os_vif_util.py
 +++ b/nova/network/os_vif_util.py
 @@ -338,6 +338,21 @@ def _nova_to_osvif_vif_ovs(vif):
@@ -24,4 +24,118 @@ index 9b76ef3..c1e3806 100644
      elif vif.is_hybrid_plug_enabled():
          obj = _get_vif_instance(
              vif,
-
+diff --git a/nova/virt/libvirt/config.py b/nova/virt/libvirt/config.py
+index 9ab5136..779a613 100644
+--- a/nova/virt/libvirt/config.py
++++ b/nova/virt/libvirt/config.py
+@@ -82,6 +82,30 @@ class LibvirtConfigObject(object):
+         return xml_str
+ 
+ 
++class LibvirtConfigQemuCommandLine(LibvirtConfigObject):
++
++    def __init__(self, **kwargs):
++        super(LibvirtConfigQemuCommandLine, self).__init__(
++            root_name='commandline', ns_prefix="qemu",
++            ns_uri='http://libvirt.org/schemas/domain/qemu/1.0',
++            **kwargs)
++        self.args = {}
++        self.net_alias_name = ""
++
++    def format_dom(self):
++        domain = super(LibvirtConfigQemuCommandLine, self).format_dom()
++        for arg,value in self.args.items():
++            set_arg = self._new_node("arg")
++            set_arg.set("value", "-set")
++            domain.append(set_arg)
++            new_arg = self._new_node("arg")
++            new_arg.set("value", "device.%s.%s=%s" % (self.net_alias_name,
++                                                      arg, value))
++            domain.append(new_arg)
++
++        return domain
++
++
+ class LibvirtConfigCaps(LibvirtConfigObject):
+ 
+     def __init__(self, **kwargs):
+@@ -2684,6 +2708,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+         self.idmaps = []
+         self.perf_events = []
+         self.launch_security = None
++        self.qemu_args = []
+ 
+     def _format_basic_props(self, root):
+         root.append(self._text_node("uuid", self.uuid))
+@@ -2767,6 +2792,11 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+             devices.append(dev.format_dom())
+         root.append(devices)
+ 
++    def _format_qemu_args(self, root):
++        for qemu_arg in self.qemu_args:
++            root.append(qemu_arg.format_dom())
++
++
+     def _format_idmaps(self, root):
+         if len(self.idmaps) == 0:
+             return
+@@ -2818,6 +2848,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+ 
+         self._format_sev(root)
+ 
++        self._format_qemu_args(root)
++
+         return root
+ 
+     def _parse_basic_props(self, xmldoc):
+diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
+index 2c5961c..d79cac8 100644
+--- a/nova/virt/libvirt/driver.py
++++ b/nova/virt/libvirt/driver.py
+@@ -4859,6 +4859,13 @@ class LibvirtDriver(driver.ComputeDriver):
+ 
+         return dev
+ 
++    def _get_guest_qemu_commandline(self, net_alias, **kwargs):
++        qemu_config = vconfig.LibvirtConfigQemuCommandLine()
++        qemu_config.net_alias_name = net_alias
++        qemu_config.args = kwargs
++
++        return qemu_config
++
+     def _get_guest_config_meta(self, instance):
+         """Get metadata config for guest."""
+ 
+@@ -6009,12 +6016,32 @@ class LibvirtDriver(driver.ComputeDriver):
+         for config in storage_configs:
+             guest.add_device(config)
+ 
++        net_index = 0
+         for vif in network_info:
+             config = self.vif_driver.get_config(
+                 instance, vif, image_meta,
+                 flavor, virt_type, self._host)
+             guest.add_device(config)
+ 
++            if vif.get("vnic_type") == "virtio-forwarder":
++                # Enable page-per-vq for virtio-forwarder interface
++                args_dict = {"page-per-vq": "on"}
++                if (vif.get("network") and vif.get("network").get("meta") and
++                        vif.get("network").get("meta").get("mtu")):
++
++                    # As a workaround, we have to set mtu_host in xml file for
++                    # virtio-forwarder interface, we may revist it if needed
++                    args_dict["host_mtu"] = vif["network"]["meta"]["mtu"]
++                qemu_args = self._get_guest_qemu_commandline("net%d"
++                                                             % net_index,
++                                                             **args_dict)
++                guest.qemu_args.append(qemu_args)
++            if vif.get("vnic_type") in ["virtio-forwarder", "normal", "macvtap"]:
++                # As the alias name of virtio-forwarder, macvtap and normal
++                # ports will be in the same format as net[0-9]*,
++                # so we are increasing the net index here
++                net_index += 1
++
+         self._create_consoles(virt_type, guest, instance, flavor, image_meta)
+ 
+         pointer = self._get_guest_pointer_model(guest.os_type, image_meta)
