@@ -14,7 +14,7 @@ $ cd build/
 ```
 Specify the MLNX_OFED_VERSION and run the build command
 ```
-$ MLNX_OFED_VERSION=50218 /bin/bash build.sh
+$ MLNX_OFED_VERSION=52220 /bin/bash build.sh
 ```
 Now the ovs-docker image created successfully
 
@@ -32,11 +32,11 @@ In case of bonding, reuse the --pci-args for the second pf, but make sure to use
 ```--pmd-cpu-mask <mask> A core bitmask that sets which cores are used by OVS-DPDK for datapath packet processing```  
 
 ```
-$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --port 6000
+$ MLNX_OFED_VERSION=52220 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --port 6000
 ```  
 In case of bonding it should be like this  
 ```
-$ MLNX_OFED_VERSION=50218 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --pci-args 0000:02:00.0 pf1vf[0-3] --port 6000
+$ MLNX_OFED_VERSION=52220 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --pci-args 0000:02:00.0 pf1vf[0-3] --port 6000
 ```  
 
 Now the ovs-forwarder created successfully
@@ -45,12 +45,12 @@ Now the ovs-forwarder created successfully
 Make sure you have installed all of the following prerequisites on the host machine:  
   - With connection tracking:  
     - openvswitch-2.13 and above  
-    - MLNX_OFED_LINUX-5.1-2.3.7.1 and above  
+    - MLNX_OFED_LINUX-5.2-2.2.0.0 and above  
     - kernel-5.7 and above with connection tracking modules  
 
   - Without connection tracking:  
     - Openvswitch, openvswitch-2.12 and above  
-    - MLNX_OFED_LINUX-5.1-2.3.7.1 and above  
+    - MLNX_OFED_LINUX-5.2-2.2.0.0 and above  
 
 ## Supported Hardware
 Containerized OVS Forwarder has been validated to work with the following Mellanox hardware:
@@ -98,6 +98,12 @@ Then start the contaier by running:
 ```
 $ docker start ovs-forwarder:$MLNX_OFED_VERSION
 ```
+
+## Enable debugging inside OVS container  
+To enable debug in ovs inside the container, you can run the following command inside the container:  
+  ```
+  $ ovs-appctl vlog/set dpdk::DBG
+  ```  
 
 ## Use ovs_modules
 You can use the python/example.py script in order to use ovs modules  
