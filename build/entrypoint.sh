@@ -73,7 +73,7 @@ ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 # Add dpdk-extra args.
 if [[ -n "${dpdk_extra}" ]]
 then
-    ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="${dpdk_extra}"
+    ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--log-level=pmd,8 ${dpdk_extra}"
 fi
 
 # Add pmd-cpu-mask
