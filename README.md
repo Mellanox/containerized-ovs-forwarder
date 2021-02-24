@@ -11,10 +11,7 @@ The ovs modules were taken from [openstack/os-vif](https://github.com/openstack/
 Go to build directory
 ```
 $ cd build/
-```
-Specify the MLNX_OFED_VERSION and run the build command
-```
-$ MLNX_OFED_VERSION=52220 /bin/bash build.sh
+$ /bin/bash build.sh
 ```
 Now the ovs-docker image created successfully
 
