@@ -1,10 +1,12 @@
 # Containerized-ovs-forwarder
-This repository builds a container image for ovs forwarder.
-Also it implement two ovs modules:
-- The containerovsdb which connect to ovs container and create bridges and vdpa ports.
-- The ovsdb which connect to ovs on the host  
+This repository implements a solution for supporting vdpa with ovs-kernel:
+  - Builds a container image for ovs forwarder.
+  - Implement two ovs modules:
+    - The containerovsdb which connect to ovs container and create bridges and vdpa ports.
+    - The ovsdb which connect to ovs on the host.  
+  - Provide required openstack patches for train and ussuri releases.  
 
-The ovs modules were taken from [openstack/os-vif](https://github.com/openstack/os-vif/).
+The ovs modules were taken from [openstack/os-vif](https://github.com/openstack/os-vif/).  
 
 Also it explains how to configure the setup and the VDPA port inside the container.
 
@@ -25,6 +27,30 @@ Make sure you have installed all of the following prerequisites on the host mach
 Containerized OVS Forwarder has been validated to work with the following Mellanox hardware:
 - ConnectX-5 family adapters => min FW is 16.29.2002
 - ConnectX-6Dx family adapters => min FW is 22.29.2002
+
+## Enable UCTX
+Make sure that you have UCTX_EN enabled in FW configuration  
+  ```
+  $ mlxconfig -d mlx5_0 q UCTX_EN
+  ```
+if it's disabled run this command and reboot the server  
+  ```
+  $ mlxconfig -d mlx5_0 s UCTX_EN=1
+  ```
+
+## Disable SELinux  
+Make sure that you have selinux in permissive mode or disabled in your host machine  
+  ```  
+  $ getenforce  
+  ```  
+If it's not in Permissive mode or disabled set it using this command:  
+  ```  
+  $ setenforce Permissive  
+  ```  
+And to make it's permanent, open the file `/etc/selinux/config` and change the option SELINUX to disabled or permissive  
+
+## Openstack integration  
+For openstack integration go to [openstack guidelines](openstack/README.md).  
 
 ## Enable switchdev mode
 Before starting ovs container, make sure to have vfs in switchdev mode and the vfs are binded
@@ -179,16 +205,6 @@ $ MLNX_OFED_VERSION=52220 /bin/bash container_create.sh --pci-args 0000:02:00.0 
 ```  
 
 Now the ovs-forwarder created successfully
-
-## Enable UCTX
-Make sure that you have UCTX_EN enabled in FW configuration  
-  ```
-  $ mlxconfig -d mlx5_0 q UCTX_EN
-  ```
-if it's disabled run this command and reboot the server  
-  ```
-  $ mlxconfig -d mlx5_0 s UCTX_EN=1
-  ```
 
 ## Enable debugging inside OVS container  
 To enable debug in ovs inside the container, you can run the following command inside the container:  
