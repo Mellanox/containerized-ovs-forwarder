@@ -3,10 +3,10 @@ This repository implements a solution for supporting vdpa with ovs-kernel:
   - Builds a container image for ovs forwarder.
   - Implement two ovs modules:
     - The containerovsdb which connect to ovs container and create bridges and vdpa ports.
-    - The ovsdb which connect to ovs on the host.  
-  - Provide required openstack patches for train and ussuri releases.  
+    - The ovsdb which connect to ovs on the host.
+  - Provide required openstack patches for train and ussuri releases.
 
-The ovs modules were taken from [openstack/os-vif](https://github.com/openstack/os-vif/).  
+The ovs modules were taken from [openstack/os-vif](https://github.com/openstack/os-vif/).
 
 Also it explains how to configure the setup and the VDPA port inside the container.
 
@@ -29,28 +29,28 @@ Containerized OVS Forwarder has been validated to work with the following Mellan
 - ConnectX-6Dx family adapters => min FW is 22.29.2002
 
 ## Enable UCTX
-Make sure that you have UCTX_EN enabled in FW configuration  
+Make sure that you have UCTX_EN enabled in FW configuration
   ```
   $ mlxconfig -d mlx5_0 q UCTX_EN
   ```
-if it's disabled run this command and reboot the server  
+if it's disabled run this command and reboot the server
   ```
   $ mlxconfig -d mlx5_0 s UCTX_EN=1
   ```
 
-## Disable SELinux  
-Make sure that you have selinux in permissive mode or disabled in your host machine  
-  ```  
-  $ getenforce  
-  ```  
-If it's not in Permissive mode or disabled set it using this command:  
-  ```  
-  $ setenforce Permissive  
-  ```  
-And to make it's permanent, open the file `/etc/selinux/config` and change the option SELINUX to disabled or permissive  
+## Disable SELinux
+Make sure that you have selinux in permissive mode or disabled in your host machine
+  ```
+  $ getenforce
+  ```
+If it's not in Permissive mode or disabled set it using this command:
+  ```
+  $ setenforce Permissive
+  ```
+And to make it's permanent, open the file `/etc/selinux/config` and change the option SELINUX to disabled or permissive
 
-## Openstack integration  
-For openstack integration go to [openstack guidelines](openstack/README.md).  
+## Openstack integration
+For openstack integration go to [openstack guidelines](openstack/README.md).
 
 ## Enable switchdev mode
 Before starting ovs container, make sure to have vfs in switchdev mode and the vfs are binded
@@ -132,7 +132,7 @@ Before starting ovs container, make sure to have vfs in switchdev mode and the v
     $ for i in `lspci -D | grep nox | grep Virt| awk '{print $1}'`; do echo $i > /sys/bus/pci/drivers/mlx5_core/bind; done
     ```
 
-## Build ovs-forwarder container image (not needed incase you pull docker image from docker hub)  
+## Build ovs-forwarder container image (not needed incase you pull docker image from docker hub)
 
 Go to build directory
 ```
@@ -141,7 +141,7 @@ $ /bin/bash build.sh
 ```
 Now the ovs-docker image created successfully
 
-## Pull docker image from docker hub 
+## Pull docker image from docker hub
 
   - Install and start docker: https://docs.docker.com/engine/install/centos/
   - Container from docker.io/mellanox/ovs-forwarder can be used:
@@ -156,6 +156,7 @@ Now the ovs-docker image created successfully
   - clone containerized-ovs-forwarder:
     ```
     git clone https://github.com/Mellanox/containerized-ovs-forwarder
+    git checkout origin/v5.2 -b v5.2
     ```
   - change directory to containerized-ovs-forwarder:
     ```
@@ -178,7 +179,7 @@ Now the ovs-docker image created successfully
     ```
 
 ## Build OVS container
-Once the image is ready, you can create the container by running container_create script:  
+Once the image is ready, you can create the container by running container_create script:
 Pass the required arguements to container_create,
 
 ```
@@ -189,8 +190,8 @@ Pass the required arguements to container_create,
    --pci-args <pci_address> <vfs_range> A pci address of dpdk interface and range of vfs in format pf0vf[range]
 ```
 
-In case of bonding, reuse the --pci-args for the second pf, but make sure to use the pci address of the pf0 and vfs range in format pf1vf[range]  
-**Note**: We can't use this new syntax on non vf-lag case with pf1 as a dpdk interface 
+In case of bonding, reuse the --pci-args for the second pf, but make sure to use the pci address of the pf0 and vfs range in format pf1vf[range]
+**Note**: We can't use this new syntax on non vf-lag case with pf1 as a dpdk interface
 
 ```
    --pmd-cpu-mask <mask> A core bitmask that sets which cores are used by OVS-DPDK for datapath packet processing
@@ -198,19 +199,19 @@ In case of bonding, reuse the --pci-args for the second pf, but make sure to use
 
 ```
 $ MLNX_OFED_VERSION=52220 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --port 6000
-```  
-In case of bonding it should be like this  
+```
+In case of bonding it should be like this
 ```
 $ MLNX_OFED_VERSION=52220 /bin/bash container_create.sh --pci-args 0000:02:00.0 pf0vf[0-3] --pci-args 0000:02:00.0 pf1vf[0-3] --port 6000
-```  
+```
 
 Now the ovs-forwarder created successfully
 
-## Enable debugging inside OVS container  
-To enable debug in ovs inside the container, you can run the following command inside the container:  
+## Enable debugging inside OVS container
+To enable debug in ovs inside the container, you can run the following command inside the container:
   ```
   $ ovs-appctl vlog/set dpdk::DBG
-  ```  
+  ```
 ## MTU / jumbo frame configuration
   - Verify kernel on VM is 4.14+
     ```
@@ -225,7 +226,7 @@ To enable debug in ovs inside the container, you can run the following command i
     tcpdump -i ens4f0 -nev icmp &
     ping 11.100.126.1 -s 9188 -M do -c 1
     ```
-  - Enable host_mtu in xml add the following values to xml 
+  - Enable host_mtu in xml add the following values to xml
     ```
     <domain type='kvm' id='21' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
     <qemu:commandline>
@@ -258,10 +259,10 @@ To enable debug in ovs inside the container, you can run the following command i
     ```
 
 ## Use ovs_modules
-You can use the python/example.py script in order to use ovs modules  
+You can use the python/example.py script in order to use ovs modules
 The script creates netdev bridge and vdpa port on the container,
-and also create a bridge and plug representor port on the host  
-Before using the ovs modules make sure that the requirements in requirements.txt are installed  
+and also create a bridge and plug representor port on the host
+Before using the ovs modules make sure that the requirements in requirements.txt are installed
 ```
 $ cd python
 $ python example.py
