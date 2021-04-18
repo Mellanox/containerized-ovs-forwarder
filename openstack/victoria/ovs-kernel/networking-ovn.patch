@@ -1,8 +1,8 @@
 diff --git a/plugins/ml2/drivers/ovn/mech_driver/mech_driver.py b/plugins/ml2/drivers/ovn/mech_driver/mech_driver.py
-index 3650702e8d..45b59afe6d 100644
+index a91603ff7a..5a1f0cf44b 100644
 --- a/plugins/ml2/drivers/ovn/mech_driver/mech_driver.py
 +++ b/plugins/ml2/drivers/ovn/mech_driver/mech_driver.py
-@@ -154,7 +154,8 @@ class OVNMechanismDriver(api.MechanismDriver):
+@@ -155,7 +155,8 @@ class OVNMechanismDriver(api.MechanismDriver):
          self.supported_vnic_types = [portbindings.VNIC_NORMAL,
                                       portbindings.VNIC_DIRECT,
                                       portbindings.VNIC_DIRECT_PHYSICAL,
