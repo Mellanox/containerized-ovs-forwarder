@@ -25,7 +25,7 @@ index 0bfd87bb1e..ee6578dcbb 100644
          obj = _get_vif_instance(
              vif,
 diff --git a/nova/virt/libvirt/config.py b/nova/virt/libvirt/config.py
-index 9ab5136bae..779a613468 100644
+index ea525648b3..21ce91dd3c 100644
 --- a/nova/virt/libvirt/config.py
 +++ b/nova/virt/libvirt/config.py
 @@ -82,6 +82,30 @@ class LibvirtConfigObject(object):
@@ -59,7 +59,7 @@ index 9ab5136bae..779a613468 100644
  class LibvirtConfigCaps(LibvirtConfigObject):
  
      def __init__(self, **kwargs):
-@@ -2684,6 +2708,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2749,6 +2773,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
          self.idmaps = []
          self.perf_events = []
          self.launch_security = None
@@ -67,7 +67,7 @@ index 9ab5136bae..779a613468 100644
  
      def _format_basic_props(self, root):
          root.append(self._text_node("uuid", self.uuid))
-@@ -2767,6 +2792,11 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2832,6 +2857,11 @@ class LibvirtConfigGuest(LibvirtConfigObject):
              devices.append(dev.format_dom())
          root.append(devices)
  
@@ -79,7 +79,7 @@ index 9ab5136bae..779a613468 100644
      def _format_idmaps(self, root):
          if len(self.idmaps) == 0:
              return
-@@ -2818,6 +2848,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2883,6 +2913,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
  
          self._format_sev(root)
  
@@ -89,10 +89,10 @@ index 9ab5136bae..779a613468 100644
  
      def _parse_basic_props(self, xmldoc):
 diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
-index 8c792bfe6f..4f5f3f4e1a 100644
+index 5dca28f24c..5348dae88a 100644
 --- a/nova/virt/libvirt/driver.py
 +++ b/nova/virt/libvirt/driver.py
-@@ -4866,6 +4866,13 @@ class LibvirtDriver(driver.ComputeDriver):
+@@ -4987,6 +4987,13 @@ class LibvirtDriver(driver.ComputeDriver):
  
          return dev
  
@@ -106,15 +106,15 @@ index 8c792bfe6f..4f5f3f4e1a 100644
      def _get_guest_config_meta(self, instance):
          """Get metadata config for guest."""
  
-@@ -6016,12 +6023,32 @@ class LibvirtDriver(driver.ComputeDriver):
+@@ -6170,12 +6177,32 @@ class LibvirtDriver(driver.ComputeDriver):
          for config in storage_configs:
              guest.add_device(config)
  
 +        net_index = 0
          for vif in network_info:
              config = self.vif_driver.get_config(
-                 instance, vif, image_meta,
-                 flavor, virt_type, self._host)
+                 instance, vif, image_meta, flavor, virt_type,
+             )
              guest.add_device(config)
  
 +            if vif.get("vnic_type") == "virtio-forwarder":
