@@ -257,6 +257,15 @@ To enable debug in ovs inside the container, you can run the following command i
     <driver queues='8'/>
     ```
 
+  - Add memoryBacking section to reduce memory consumed by ovs-vswitchd thread inside the docker: 
+    ```
+    <memoryBacking>
+    <hugepages>
+      <page size='1048576' unit='KiB'/>
+    </hugepages>
+    </memoryBacking>
+    ```
+
 ## Use ovs_modules
 You can use the python/example.py script in order to use ovs modules  
 The script creates netdev bridge and vdpa port on the container,
