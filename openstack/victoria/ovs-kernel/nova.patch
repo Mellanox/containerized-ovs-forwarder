@@ -133,7 +133,7 @@ index 3677ed5280..7fa6f288eb 100644
  def set_vif_mtu_config(conf, mtu):
      """Populate a LibvirtConfigGuestInterface instance
 diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
-index 5dca28f24c..496a7949a5 100644
+index 5dca28f24c..c6765a9d57 100644
 --- a/nova/virt/libvirt/driver.py
 +++ b/nova/virt/libvirt/driver.py
 @@ -4987,6 +4987,13 @@ class LibvirtDriver(driver.ComputeDriver):
@@ -150,25 +150,21 @@ index 5dca28f24c..496a7949a5 100644
      def _get_guest_config_meta(self, instance):
          """Get metadata config for guest."""
  
-@@ -6175,6 +6182,21 @@ class LibvirtDriver(driver.ComputeDriver):
+@@ -6175,6 +6182,17 @@ class LibvirtDriver(driver.ComputeDriver):
                  instance, vif, image_meta, flavor, virt_type,
              )
              guest.add_device(config)
 +            if vif.get("vnic_type") == network_model.VNIC_TYPE_VIRTIO_FORWARDER:
-+
-+                # Enable page-per-vq for virtio-forwarder interface
-+                args_dict = {"page-per-vq": "on"}
-+
 +                if (vif.get("network") and vif.get("network").get("meta") and
 +                        vif.get("network").get("meta").get("mtu")):
 +
 +                    # As a workaround, we have to set mtu_host in xml file for
 +                    # virtio-forwarder interface, we may revist it if needed
-+                    args_dict["host_mtu"] = vif["network"]["meta"]["mtu"]
-+                qemu_args = self._get_guest_qemu_commandline(config.vhost_net_alias,
-+                                                             **args_dict)
++                    args_dict = {"host_mtu": vif["network"]["meta"]["mtu"]}
++                    qemu_args = self._get_guest_qemu_commandline(config.vhost_net_alias,
++                                                                 **args_dict)
 +
-+                guest.qemu_args.append(qemu_args)
++                    guest.qemu_args.append(qemu_args)
  
          self._create_consoles(virt_type, guest, instance, flavor, image_meta)
  
