@@ -1,0 +1,188 @@
+From 2338ffad5f58ccb4b8d314efc5a3989f6f266058 Mon Sep 17 00:00:00 2001
+From: rpm-build <rpm-build>
+Date: Sun, 2 May 2021 23:52:29 +0300
+Subject: [PATCH] Add page_per_vq flag to the 'driver' element of virtio
+ devices
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1925363
+
+Add support for setting the page-per-vq flag, which is important for
+vdpa with vhost-user performance.
+
+Signed-off-by: Gavi Teitz <gavi@nvidia.com>
+---
+ docs/schemas/domaincommon.rng |  5 +++++
+ src/conf/domain_conf.c        | 15 +++++++++++++++
+ src/conf/domain_conf.h        |  1 +
+ src/qemu/qemu_capabilities.c  |  2 ++
+ src/qemu/qemu_capabilities.h  |  1 +
+ src/qemu/qemu_command.c       |  5 ++++-
+ src/qemu/qemu_hotplug.c       |  1 +
+ tests/qemuxml2argvtest.c      |  2 ++
+ tests/qemuxml2xmltest.c       |  2 ++
+ 9 files changed, 33 insertions(+), 1 deletion(-)
+
+diff --git a/docs/schemas/domaincommon.rng b/docs/schemas/domaincommon.rng
+index 8cbbd7e..2b1d622 100644
+--- a/docs/schemas/domaincommon.rng
++++ b/docs/schemas/domaincommon.rng
+@@ -3280,6 +3280,11 @@
+                   <ref name='positiveInteger'/>
+                 </attribute>
+               </optional>
++              <optional>
++                <attribute name="page_per_vq">
++                  <ref name="virOnOff"/>
++                </attribute>
++              </optional>
+               <optional>
+                 <attribute name="txmode">
+                   <choice>
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 04ec4a4..242183a 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -11931,6 +11931,7 @@ virDomainNetDefParseXML(virDomainXMLOptionPtr xmlopt,
+     g_autofree char *queues = NULL;
+     g_autofree char *rx_queue_size = NULL;
+     g_autofree char *tx_queue_size = NULL;
++    g_autofree char *page_per_vq = NULL;
+     g_autofree char *str = NULL;
+     g_autofree char *filter = NULL;
+     g_autofree char *internal = NULL;
+@@ -12109,6 +12110,7 @@ virDomainNetDefParseXML(virDomainXMLOptionPtr xmlopt,
+                 queues = virXMLPropString(cur, "queues");
+                 rx_queue_size = virXMLPropString(cur, "rx_queue_size");
+                 tx_queue_size = virXMLPropString(cur, "tx_queue_size");
++                page_per_vq = virXMLPropString(cur, "page_per_vq");
+ 
+                 if (virDomainVirtioOptionsParseXML(cur, &def->virtio) < 0)
+                     goto error;
+@@ -12529,6 +12531,15 @@ virDomainNetDefParseXML(virDomainXMLOptionPtr xmlopt,
+             }
+             def->driver.virtio.tx_queue_size = q;
+         }
++        if (page_per_vq) {
++            if ((val = virTristateSwitchTypeFromString(page_per_vq)) <= 0) {
++                virReportError(VIR_ERR_CONFIG_UNSUPPORTED,
++                               _("unknown page_per_vq mode '%s'"),
++                               page_per_vq);
++                goto error;
++            }
++            def->driver.virtio.page_per_vq = val;
++        }
+ 
+         if ((tmpNode = virXPathNode("./driver/host", ctxt))) {
+             if ((str = virXMLPropString(tmpNode, "csum"))) {
+@@ -26465,6 +26476,10 @@ virDomainVirtioNetDriverFormat(char **outstr,
+     if (def->driver.virtio.tx_queue_size)
+         virBufferAsprintf(&buf, " tx_queue_size='%u'",
+                           def->driver.virtio.tx_queue_size);
++    if (def->driver.virtio.page_per_vq) {
++        virBufferAsprintf(&buf, " page_per_vq='%s'",
++                          virTristateSwitchTypeToString(def->driver.virtio.page_per_vq));
++    }
+ 
+     virDomainVirtioOptionsFormat(&buf, def->virtio);
+ 
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index 28b88b2..71221b2 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -992,6 +992,7 @@ struct _virDomainNetDef {
+             virDomainNetVirtioTxModeType txmode;
+             virTristateSwitch ioeventfd;
+             virTristateSwitch event_idx;
++            virTristateSwitch page_per_vq;
+             unsigned int queues; /* Multiqueue virtio-net */
+             unsigned int rx_queue_size;
+             unsigned int tx_queue_size;
+diff --git a/src/qemu/qemu_capabilities.c b/src/qemu/qemu_capabilities.c
+index 96e749d..af28b2a 100644
+--- a/src/qemu/qemu_capabilities.c
++++ b/src/qemu/qemu_capabilities.c
+@@ -600,6 +600,7 @@ VIR_ENUM_IMPL(virQEMUCaps,
+ 
+               /* 380 */
+               "blockdev-reopen.__com.redhat_rhel-av-8_2_0-api",
++	      "virtio-net.page_per_vq",
+     );
+ 
+ 
+@@ -1381,6 +1382,7 @@ static struct virQEMUCapsDevicePropsFlags virQEMUCapsDevicePropsVirtioNet[] = {
+     { "event_idx", QEMU_CAPS_VIRTIO_NET_EVENT_IDX, NULL },
+     { "rx_queue_size", QEMU_CAPS_VIRTIO_NET_RX_QUEUE_SIZE, NULL },
+     { "tx_queue_size", QEMU_CAPS_VIRTIO_NET_TX_QUEUE_SIZE, NULL },
++    { "page_per_vq", QEMU_CAPS_VIRTIO_NET_PAGE_PER_VQ, NULL },
+     { "host_mtu", QEMU_CAPS_VIRTIO_NET_HOST_MTU, NULL },
+     { "disable-legacy", QEMU_CAPS_VIRTIO_PCI_DISABLE_LEGACY, NULL },
+     { "iommu_platform", QEMU_CAPS_VIRTIO_PCI_IOMMU_PLATFORM, NULL },
+diff --git a/src/qemu/qemu_capabilities.h b/src/qemu/qemu_capabilities.h
+index a62558e..559fc07 100644
+--- a/src/qemu/qemu_capabilities.h
++++ b/src/qemu/qemu_capabilities.h
+@@ -580,6 +580,7 @@ typedef enum { /* virQEMUCapsFlags grouping marker for syntax-check */
+ 
+     /* 380 */
+     QEMU_CAPS_BLOCKDEV_REOPEN_COM_REDHAT_AV_8_2_0_API, /* downstream support for blockdev reopen in rhel-av-8.2.0 */
++    QEMU_CAPS_VIRTIO_NET_PAGE_PER_VQ, /* virtio-net-*.page_per_vq */
+ 
+     QEMU_CAPS_LAST /* this must always be the last item */
+ } virQEMUCapsFlags;
+diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
+index cff33bc..65703dc 100644
+--- a/src/qemu/qemu_command.c
++++ b/src/qemu/qemu_command.c
+@@ -3515,7 +3515,10 @@ qemuBuildNicDevStr(virDomainDefPtr def,
+         }
+         virBufferAsprintf(&buf, ",tx_queue_size=%u", net->driver.virtio.tx_queue_size);
+     }
+-
++    if (net->driver.virtio.page_per_vq) {
++        virBufferAsprintf(&buf, ",page-per-vq=%s",
++                          virTristateSwitchTypeToString(net->driver.virtio.page_per_vq));
++    }
+     if (usingVirtio && net->mtu) {
+         if (!virQEMUCapsGet(qemuCaps, QEMU_CAPS_VIRTIO_NET_HOST_MTU)) {
+             virReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+diff --git a/src/qemu/qemu_hotplug.c b/src/qemu/qemu_hotplug.c
+index 233e81d..f79a553 100644
+--- a/src/qemu/qemu_hotplug.c
++++ b/src/qemu/qemu_hotplug.c
+@@ -3540,6 +3540,7 @@ qemuDomainChangeNet(virQEMUDriverPtr driver,
+          olddev->driver.virtio.queues != newdev->driver.virtio.queues ||
+          olddev->driver.virtio.rx_queue_size != newdev->driver.virtio.rx_queue_size ||
+          olddev->driver.virtio.tx_queue_size != newdev->driver.virtio.tx_queue_size ||
++         olddev->driver.virtio.page_per_vq != newdev->driver.virtio.page_per_vq ||
+          olddev->driver.virtio.host.csum != newdev->driver.virtio.host.csum ||
+          olddev->driver.virtio.host.gso != newdev->driver.virtio.host.gso ||
+          olddev->driver.virtio.host.tso4 != newdev->driver.virtio.host.tso4 ||
+diff --git a/tests/qemuxml2argvtest.c b/tests/qemuxml2argvtest.c
+index e0e3d0d..f634f87 100644
+--- a/tests/qemuxml2argvtest.c
++++ b/tests/qemuxml2argvtest.c
+@@ -1430,6 +1430,8 @@ mymain(void)
+             QEMU_CAPS_VIRTIO_NET_RX_QUEUE_SIZE,
+             QEMU_CAPS_VIRTIO_NET_TX_QUEUE_SIZE);
+     DO_TEST_PARSE_ERROR("net-virtio-rxqueuesize-invalid-size", NONE);
++    DO_TEST("net-virtio-page-per-vq",
++            QEMU_CAPS_VIRTIO_NET_PAGE_PER_VQ);
+     DO_TEST("net-virtio-teaming",
+             QEMU_CAPS_VIRTIO_NET_FAILOVER,
+             QEMU_CAPS_DEVICE_VFIO_PCI);
+diff --git a/tests/qemuxml2xmltest.c b/tests/qemuxml2xmltest.c
+index 2ad8c67..71b5b84 100644
+--- a/tests/qemuxml2xmltest.c
++++ b/tests/qemuxml2xmltest.c
+@@ -470,6 +470,8 @@ mymain(void)
+     DO_TEST("net-eth-unmanaged-tap", NONE);
+     DO_TEST("net-virtio-network-portgroup", NONE);
+     DO_TEST("net-virtio-rxtxqueuesize", NONE);
++    DO_TEST("net-virtio-page-per-vq",
++            QEMU_CAPS_VIRTIO_NET_PAGE_PER_VQ);
+     DO_TEST("net-virtio-teaming",
+             QEMU_CAPS_VIRTIO_NET_FAILOVER,
+             QEMU_CAPS_DEVICE_VFIO_PCI);
+-- 
+2.27.0
+

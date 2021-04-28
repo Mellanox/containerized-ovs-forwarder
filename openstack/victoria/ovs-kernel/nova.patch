@@ -25,7 +25,7 @@ index 0bfd87bb1e..ee6578dcbb 100644
          obj = _get_vif_instance(
              vif,
 diff --git a/nova/virt/libvirt/config.py b/nova/virt/libvirt/config.py
-index ea525648b3..92d5bd681f 100644
+index ea525648b3..4505e180cb 100644
 --- a/nova/virt/libvirt/config.py
 +++ b/nova/virt/libvirt/config.py
 @@ -82,6 +82,30 @@ class LibvirtConfigObject(object):
@@ -68,18 +68,26 @@ index ea525648b3..92d5bd681f 100644
  
      def __eq__(self, other):
          if not isinstance(other, LibvirtConfigGuestInterface):
-@@ -1773,6 +1799,10 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
+@@ -1741,6 +1767,8 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
+                 drv_elem.set('rx_queue_size', str(self.vhost_rx_queue_size))
+             if self.vhost_tx_queue_size is not None:
+                 drv_elem.set('tx_queue_size', str(self.vhost_tx_queue_size))
++            if self.vdpa:
++                drv_elem.set('page_per_vq', 'on')
+ 
+             if (drv_elem.get('name') or drv_elem.get('queues') or
+                 drv_elem.get('rx_queue_size') or
+@@ -1773,6 +1801,9 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
              dev.append(etree.Element("source", type=self.vhostuser_type,
                                       mode=self.vhostuser_mode,
                                       path=self.vhostuser_path))
-+            if self.vdpa:
-+                if self.vhost_net_alias:
-+                    dev.append(etree.Element("alias", name=self.vhost_net_alias))
++            if self.vdpa and self.vhost_net_alias:
++                dev.append(etree.Element("alias", name=self.vhost_net_alias))
 +
          elif self.net_type == "bridge":
              dev.append(etree.Element("source", bridge=self.source_dev))
              if self.script is not None:
-@@ -2749,6 +2779,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2749,6 +2780,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
          self.idmaps = []
          self.perf_events = []
          self.launch_security = None
@@ -87,7 +95,7 @@ index ea525648b3..92d5bd681f 100644
  
      def _format_basic_props(self, root):
          root.append(self._text_node("uuid", self.uuid))
-@@ -2832,6 +2863,10 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2832,6 +2864,10 @@ class LibvirtConfigGuest(LibvirtConfigObject):
              devices.append(dev.format_dom())
          root.append(devices)
  
@@ -98,7 +106,7 @@ index ea525648b3..92d5bd681f 100644
      def _format_idmaps(self, root):
          if len(self.idmaps) == 0:
              return
-@@ -2883,6 +2918,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2883,6 +2919,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
  
          self._format_sev(root)
  

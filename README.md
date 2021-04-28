@@ -249,9 +249,9 @@ To enable debug in ovs inside the container, you can run the following command i
 ## VM XML changes:
   - Add page-per-vq for performance improvements
     ```
-    <qemu:arg value='-set'/>
-    <qemu:arg value='device.net0.page-per-vq=on'/>
+    <driver page_per_vq='on'/>
     ```
+
   - Add driver queues under interface configuration for balancing traffic between PFs in vf lag mode:
     ```
     <driver queues='8'/>
