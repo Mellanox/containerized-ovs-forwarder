@@ -1,5 +1,5 @@
 diff --git a/nova/network/os_vif_util.py b/nova/network/os_vif_util.py
-index 9b76ef3..c1e3806 100644
+index 9b76ef3c81..c1e380688a 100644
 --- a/nova/network/os_vif_util.py
 +++ b/nova/network/os_vif_util.py
 @@ -353,6 +353,21 @@ def _nova_to_osvif_vif_ovs(vif):
@@ -25,7 +25,7 @@ index 9b76ef3..c1e3806 100644
          obj = _get_vif_instance(
              vif,
 diff --git a/nova/virt/libvirt/config.py b/nova/virt/libvirt/config.py
-index 39c4da8..7b943ff 100644
+index 39c4da8847..a91d444f2d 100644
 --- a/nova/virt/libvirt/config.py
 +++ b/nova/virt/libvirt/config.py
 @@ -82,6 +82,30 @@ class LibvirtConfigObject(object):
@@ -59,7 +59,35 @@ index 39c4da8..7b943ff 100644
  class LibvirtConfigCaps(LibvirtConfigObject):
  
      def __init__(self, **kwargs):
-@@ -2605,6 +2629,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -1584,6 +1608,8 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
+         self.vlan = None
+         self.device_addr = None
+         self.mtu = None
++        self.vhost_net_alias = ''
++        self.vdpa = False
+ 
+     @property
+     def uses_virtio(self):
+@@ -1618,6 +1644,8 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
+                 drv_elem.set('rx_queue_size', str(self.vhost_rx_queue_size))
+             if self.vhost_tx_queue_size is not None:
+                 drv_elem.set('tx_queue_size', str(self.vhost_tx_queue_size))
++            if self.vdpa:
++                drv_elem.set('page_per_vq', 'on')
+ 
+             if (drv_elem.get('name') or drv_elem.get('queues') or
+                 drv_elem.get('rx_queue_size') or
+@@ -1650,6 +1678,9 @@ class LibvirtConfigGuestInterface(LibvirtConfigGuestDevice):
+             dev.append(etree.Element("source", type=self.vhostuser_type,
+                                      mode=self.vhostuser_mode,
+                                      path=self.vhostuser_path))
++            if self.vdpa and self.vhost_net_alias:
++                dev.append(etree.Element("alias", name=self.vhost_net_alias))
++
+         elif self.net_type == "bridge":
+             dev.append(etree.Element("source", bridge=self.source_dev))
+             if self.script is not None:
+@@ -2605,6 +2636,7 @@ class LibvirtConfigGuest(LibvirtConfigObject):
          self.idmaps = []
          self.perf_events = []
          self.launch_security = None
@@ -67,7 +95,7 @@ index 39c4da8..7b943ff 100644
  
      def _format_basic_props(self, root):
          root.append(self._text_node("uuid", self.uuid))
-@@ -2684,6 +2709,11 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2684,6 +2716,10 @@ class LibvirtConfigGuest(LibvirtConfigObject):
              devices.append(dev.format_dom())
          root.append(devices)
  
@@ -75,11 +103,10 @@ index 39c4da8..7b943ff 100644
 +        for qemu_arg in self.qemu_args:
 +            root.append(qemu_arg.format_dom())
 +
-+
      def _format_idmaps(self, root):
          if len(self.idmaps) == 0:
              return
-@@ -2735,6 +2765,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
+@@ -2735,6 +2771,8 @@ class LibvirtConfigGuest(LibvirtConfigObject):
  
          self._format_sev(root)
  
@@ -88,8 +115,32 @@ index 39c4da8..7b943ff 100644
          return root
  
      def _parse_basic_props(self, xmldoc):
+diff --git a/nova/virt/libvirt/designer.py b/nova/virt/libvirt/designer.py
+index 7bafd47bbc..b5caee0948 100644
+--- a/nova/virt/libvirt/designer.py
++++ b/nova/virt/libvirt/designer.py
+@@ -144,7 +144,8 @@ def set_vif_host_backend_direct_config(conf, devname, mode="passthrough"):
+ 
+ 
+ def set_vif_host_backend_vhostuser_config(conf, mode, path, rx_queue_size,
+-                                          tx_queue_size):
++                                          tx_queue_size, net_alias=None,
++                                          vdpa=False):
+     """Populate a LibvirtConfigGuestInterface instance
+     with host backend details for vhostuser socket.
+ 
+@@ -158,6 +159,9 @@ def set_vif_host_backend_vhostuser_config(conf, mode, path, rx_queue_size,
+         conf.vhost_rx_queue_size = rx_queue_size
+     if tx_queue_size:
+         conf.vhost_tx_queue_size = tx_queue_size
++    if vdpa:
++        conf.vdpa = True
++        conf.vhost_net_alias = net_alias
+ 
+ 
+ def set_vif_mtu_config(conf, mtu):
 diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
-index f4df91e..09585ca 100644
+index f4df91e494..954f1fb9f7 100644
 --- a/nova/virt/libvirt/driver.py
 +++ b/nova/virt/libvirt/driver.py
 @@ -4681,6 +4681,13 @@ class LibvirtDriver(driver.ComputeDriver):
@@ -106,36 +157,59 @@ index f4df91e..09585ca 100644
      def _get_guest_config_meta(self, instance):
          """Get metadata config for guest."""
  
-@@ -5821,12 +5828,32 @@ class LibvirtDriver(driver.ComputeDriver):
-         for config in storage_configs:
-             guest.add_device(config)
- 
-+        net_index = 0
-         for vif in network_info:
-             config = self.vif_driver.get_config(
+@@ -5826,6 +5833,16 @@ class LibvirtDriver(driver.ComputeDriver):
                  instance, vif, image_meta,
                  flavor, virt_type, self._host)
              guest.add_device(config)
- 
-+            if vif.get("vnic_type") == "virtio-forwarder":
-+                # Enable page-per-vq for virtio-forwarder interface
-+                args_dict = {"page-per-vq": "on"}
++            if vif.get("vnic_type") == network_model.VNIC_TYPE_VIRTIO_FORWARDER:
 +                if (vif.get("network") and vif.get("network").get("meta") and
 +                        vif.get("network").get("meta").get("mtu")):
 +
 +                    # As a workaround, we have to set mtu_host in xml file for
 +                    # virtio-forwarder interface, we may revist it if needed
-+                    args_dict["host_mtu"] = vif["network"]["meta"]["mtu"]
-+                qemu_args = self._get_guest_qemu_commandline("net%d"
-+                                                             % net_index,
-+                                                             **args_dict)
-+                guest.qemu_args.append(qemu_args)
-+            if vif.get("vnic_type") in ["virtio-forwarder", "normal", "macvtap"]:
-+                # As the alias name of virtio-forwarder, macvtap and normal
-+                # ports will be in the same format as net[0-9]*,
-+                # so we are increasing the net index here
-+                net_index += 1
-+
++                    args_dict = {"host_mtu": vif["network"]["meta"]["mtu"]}
++                    qemu_args = self._get_guest_qemu_commandline(config.vhost_net_alias,
++                                                                 **args_dict)
++                    guest.qemu_args.append(qemu_args)
+ 
          self._create_consoles(virt_type, guest, instance, flavor, image_meta)
  
-         pointer = self._get_guest_pointer_model(guest.os_type, image_meta)
+diff --git a/nova/virt/libvirt/vif.py b/nova/virt/libvirt/vif.py
+index c03548d007..ffed0d773d 100644
+--- a/nova/virt/libvirt/vif.py
++++ b/nova/virt/libvirt/vif.py
+@@ -501,7 +501,7 @@ class LibvirtGenericVIFDriver(object):
+         conf.target_dev = vif.vif_name
+         self._set_config_VIFPortProfile(instance, vif, conf)
+ 
+-    def _set_config_VIFVHostUser(self, instance, vif, conf, host=None):
++    def _set_config_VIFVHostUser(self, instance, vif, conf, host=None, vnic_type=""):
+         # TODO(sahid): We should never configure a driver backend for
+         # vhostuser interface. Specifically override driver to use
+         # None. This can be removed when get_base_config will be fixed
+@@ -509,8 +509,14 @@ class LibvirtGenericVIFDriver(object):
+         conf.driver_name = None
+ 
+         rx_queue_size, tx_queue_size = self._get_virtio_queue_sizes(host)
+-        designer.set_vif_host_backend_vhostuser_config(
+-            conf, vif.mode, vif.path, rx_queue_size, tx_queue_size)
++        if vnic_type == network_model.VNIC_TYPE_VIRTIO_FORWARDER:
++            net_alias = "ua-vdpa-%s" % vif.id[:12]
++            designer.set_vif_host_backend_vhostuser_config(
++                conf, vif.mode, vif.path, rx_queue_size, tx_queue_size,
++                net_alias, vdpa=True)
++        else:
++            designer.set_vif_host_backend_vhostuser_config(
++                conf, vif.mode, vif.path, rx_queue_size, tx_queue_size)
+ 
+     def _set_config_VIFHostDevice(self, instance, vif, conf, host=None):
+         if vif.dev_type == osv_fields.VIFHostDeviceDevType.ETHERNET:
+@@ -570,7 +576,7 @@ class LibvirtGenericVIFDriver(object):
+         elif isinstance(vif, osv_vifs.VIFOpenVSwitch):
+             self._set_config_VIFOpenVSwitch(instance, vif, conf, host)
+         elif isinstance(vif, osv_vifs.VIFVHostUser):
+-            self._set_config_VIFVHostUser(instance, vif, conf, host)
++            self._set_config_VIFVHostUser(instance, vif, conf, host, vnic_type)
+         elif isinstance(vif, osv_vifs.VIFHostDevice):
+             self._set_config_VIFHostDevice(instance, vif, conf, host)
+         else:
