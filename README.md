@@ -132,12 +132,15 @@ Before starting ovs container, make sure to have vfs in switchdev mode and the v
     $ for i in `lspci -D | grep nox | grep Virt| awk '{print $1}'`; do echo $i > /sys/bus/pci/drivers/mlx5_core/bind; done
     ```
 
-## Build ovs-forwarder container image (not needed incase you pull docker image from docker hub)  
+## Build ovs-forwarder container image (not needed in case you pull docker image from docker hub)
 
 Go to build directory
 ```
+If used for internal build, alternative environment variables MLNX_OFED_RHEL_LIBS MLNX_OFED_VERSION can be set.
+
 $ cd build/
 $ /bin/bash build.sh
+
 ```
 Now the ovs-docker image created successfully
 
