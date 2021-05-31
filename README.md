@@ -228,15 +228,10 @@ To enable debug in ovs inside the container, you can run the following command i
     tcpdump -i ens4f0 -nev icmp &
     ping 11.100.126.1 -s 9188 -M do -c 1
     ```
-  - Enable host_mtu in xml add the following values to xml 
+  - Set the mtu size in the xml file
     ```
-    <domain type='kvm' id='21' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
-    <qemu:commandline>
-    <qemu:arg value='-set'/>
-    <qemu:arg value='device.net1.host_mtu=9216'/>
-    </qemu:commandline>
+    <mtu size='9216'/>
     ```
-    * net1 is the alias name of the interface (it can be found by virsh dumpxml command)
   - Add mtu_request=9216 option to the OvS ports inside the container and restart the OvS:
     ```
     ovs-vsctl set port vdpa0 mtu_request=9216
@@ -250,14 +245,14 @@ To enable debug in ovs inside the container, you can run the following command i
     ```
 
 ## VM XML changes:
-  - Add page-per-vq for performance improvements
+  - Add page-per-vq for performance improvements and driver queues under interface configuration for balancing traffic between PFs in vf lag mode:  
     ```
-    <driver page_per_vq='on'/>
+    <driver queues='4' rx_queue_size='512' tx_queue_size='512' page_per_vq='on'/>
     ```
 
-  - Add driver queues under interface configuration for balancing traffic between PFs in vf lag mode:
+  - Add target dev with the name of the vf net device under interface configuration
     ```
-    <driver queues='8'/>
+    <target dev='enp3s0f0v7'/>
     ```
 
   - Add memoryBacking section to reduce memory consumed by ovs-vswitchd thread inside the docker: 
