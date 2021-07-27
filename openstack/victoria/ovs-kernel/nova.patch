@@ -1,5 +1,5 @@
 diff --git a/nova/network/os_vif_util.py b/nova/network/os_vif_util.py
-index 0bfd87bb1e..1dbb469667 100644
+index 0bfd87bb1e..2e9a8d52be 100644
 --- a/nova/network/os_vif_util.py
 +++ b/nova/network/os_vif_util.py
 @@ -26,6 +26,7 @@ from nova import exception
@@ -46,7 +46,7 @@ index 0bfd87bb1e..1dbb469667 100644
 +            vif_name=vif_name)
 +        _set_representor_datapath_offload_settings(vif, obj)
 +        obj.mode="server"
-+        obj.path=("/var/lib/vhost_sockets/sock%s" % vif['id'])[:39]
++        obj.path=("/var/lib/vhost_sockets/sock_%s" % vif_name)
 +        if vif["network"]["bridge"] is not None:
 +            obj.network.bridge = vif["network"]["bridge"]
 +
