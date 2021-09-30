@@ -1,4 +1,6 @@
 #!/bin/bash
+TOPDIR=`git rev-parse --show-toplevel`
+cd ${TOPDIR}/build
 
 # Parse arguments
 if [ -z "$MLNX_OFED_RHEL_LIBS" ]; then
@@ -43,3 +45,5 @@ rm -f mlnx-dpdk-20.11.0-1.${MLNX_OFED_VERSION}.x86_64.rpm
 rm -f openvswitch-2.14.1-1.${MLNX_OFED_VERSION}.x86_64.rpm
 fi
 rm -f Dockerfile
+
+cd -
