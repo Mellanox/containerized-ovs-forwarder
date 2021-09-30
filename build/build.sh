@@ -1,4 +1,6 @@
 #!/bin/bash
+TOPDIR=`git rev-parse --show-toplevel`
+cd ${TOPDIR}/build
 
 # Parse arguments
 if [ -z "$MLNX_OFED_RHEL_LIBS" ]; then
@@ -10,6 +12,11 @@ fi
 
 #MLNX_OFED_RHEL_LIBS="/.autodirect/mswg/release/MLNX_OFED/MLNX_OFED_LINUX-5.3-1.0.0.1.8/MLNX_OFED_LINUX-5.3-1.0.0.1.8-rhel7.7-x86_64/RPMS/"
 #MLNX_OFED_VERSION=53100.18
+
+if [ ! -z "$MLNX_OFED_LINUX" ]; then
+	MLNX_OFED_RHEL_LIBS="/.autodirect/mswg/release/MLNX_OFED/MLNX_OFED_LINUX-${MLNX_OFED_LINUX}/MLNX_OFED_LINUX-${MLNX_OFED_LINUX}-rhel7.7-x86_64/RPMS/"
+	MLNX_OFED_VERSION=`ls ${MLNX_OFED_RHEL_LIBS}/openvswitch-d* | rev | cut -d "." -f3 | rev`
+fi
 
 echo $MLNX_OFED_RHEL_LIBS | grep -v autodirect > /dev/null 2>&1
 AUTODIRECT=$?
@@ -43,3 +50,5 @@ rm -f mlnx-dpdk-20.11.0-1.${MLNX_OFED_VERSION}.x86_64.rpm
 rm -f openvswitch-2.14.1-1.${MLNX_OFED_VERSION}.x86_64.rpm
 fi
 rm -f Dockerfile
+
+cd -
