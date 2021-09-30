@@ -136,7 +136,11 @@ Before starting ovs container, make sure to have vfs in switchdev mode and the v
 
 Go to build directory
 ```
-If used for internal build, alternative environment variables MLNX_OFED_RHEL_LIBS MLNX_OFED_VERSION can be set.
+If used for internal build, alternative environment variables MLNX_OFED_RHEL_LIBS MLNX_OFED_VERSION can be set, or they are set automatically by MLNX_OFED_LINUX if set.
+For example:
+MLNX_OFED_RHEL_LIBS="/.autodirect/mswg/release/MLNX_OFED/MLNX_OFED_LINUX-5.3-1.0.0.1.14/MLNX_OFED_LINUX-5.3-1.0.0.1.14-rhel7.7-x86_64/RPMS/" MLNX_OFED_VERSION=53100.114 ./build.sh
+Or
+sudo MLNX_OFED_LINUX=5.4-2.4.1.3 ./build/build.sh
 
 $ cd build/
 $ /bin/bash build.sh
