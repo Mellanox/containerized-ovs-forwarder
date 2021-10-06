@@ -98,8 +98,20 @@ Note: if the setup is containerized, please make sure to apply patches inside th
     $ cd /usr/lib/python3.6/site-packages/vif_plug_ovs
     $ patch < os-vif.patch
     ```
-Edit /etc/libvirt/qemu.conf config with adding
-group = "hugetlbfs"
+On each compute node configure the following files:
+
+-  We need to configure the group to be hugetlbfs
+   ```
+   Edit /etc/libvirt/qemu.conf config with adding  
+   group = "hugetlbfs"  
+   ```
+
+-   We need to reserved_huge_pages option to reserve huge pages for the forwarder  
+   ```
+   Edit /var/lib/config-data/puppet-generated/nova_libvirt/etc/nova/nova.conf  
+   reserved_huge_pages=node:0,size:1GB,count:8  
+   reserved_huge_pages=node:1,size:1GB,count:8  
+   ```
 
 After that restart the nova, lbvirt  and neutron services/contianers  
 
