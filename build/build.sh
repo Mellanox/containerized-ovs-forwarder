@@ -23,10 +23,13 @@ AUTODIRECT=$?
 
 rm -f Dockerfile
 if [ "$AUTODIRECT" == "1" ]; then
-cp ${MLNX_OFED_RHEL_LIBS}rdma-core-5?mlnx1-1.${MLNX_OFED_VERSION}.x86_64.rpm .
-cp ${MLNX_OFED_RHEL_LIBS}libibverbs-5?mlnx1-1.${MLNX_OFED_VERSION}.x86_64.rpm .
-cp ${MLNX_OFED_RHEL_LIBS}mlnx-dpdk-20.11.0-1.${MLNX_OFED_VERSION}.x86_64.rpm .
-cp ${MLNX_OFED_RHEL_LIBS}openvswitch-2.14.1-1.${MLNX_OFED_VERSION}.x86_64.rpm .
+rm -fr tmp-rpms
+mkdir tmp-rpms
+cp ${MLNX_OFED_RHEL_LIBS}*rdma-core-[[:digit:]]*.x86_64.rpm tmp-rpms
+cp ${MLNX_OFED_RHEL_LIBS}*libibverbs-[[:digit:]]*.x86_64.rpm tmp-rpms
+cp ${MLNX_OFED_RHEL_LIBS}*openvswitch-[[:digit:]]*.x86_64.rpm tmp-rpms
+
+ls -la tmp-rpms
 
 ln -s Dockerfile-autodirect Dockerfile
 
@@ -44,10 +47,7 @@ docker build \
     -t ovs-forwarder:$MLNX_OFED_VERSION .
 
 if [ "$AUTODIRECT" == "1" ]; then
-rm -f rdma-core-5?mlnx1-1.${MLNX_OFED_VERSION}.x86_64.rpm
-rm -f libibverbs-5?mlnx1-1.${MLNX_OFED_VERSION}.x86_64.rpm
-rm -f mlnx-dpdk-20.11.0-1.${MLNX_OFED_VERSION}.x86_64.rpm
-rm -f openvswitch-2.14.1-1.${MLNX_OFED_VERSION}.x86_64.rpm
+rm -fr tmp-rpms
 fi
 rm -f Dockerfile
 
